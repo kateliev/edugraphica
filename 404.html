@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Page not found · Edugraphica</title>
+<!-- GitHub Pages serves this for any missing path, so links here are root-absolute. -->
+<meta name="copyright" content="© 2026 Vassil Kateliev · edugraphica.org">
+<link rel="license" href="https://polyformproject.org/licenses/noncommercial/1.0.0" title="Code: PolyForm Noncommercial 1.0.0">
+<link rel="license" href="https://creativecommons.org/licenses/by-nc-sa/4.0/" title="Content: CC BY-NC-SA 4.0">
+<link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/base.css">
+</head>
+<body>
+<main class="message-page">
+  <div class="panel">
+    <span class="site-mark">Edu<b>graphica</b></span>
+    <h1 data-i18n="errors.notFoundTitle">Page not found</h1>
+    <p data-i18n="errors.notFoundText">This page does not exist. It may have moved, or it is still being built.</p>
+    <p><a class="btn primary" href="/" data-i18n="errors.home">Back to the start</a></p>
+  </div>
+</main>
+<footer id="siteFoot" class="site-foot" style="position:fixed;left:0;right:0;bottom:10px"></footer>
+<script type="module">
+  import { mountSiteFoot } from '/assets/js/core/sitenav.js';
+  import { pickLang, loadStrings, applyDom } from '/assets/js/core/i18n.js';
+  const lang = pickLang(); document.documentElement.lang = lang;
+  loadStrings('common', lang).then(S => { applyDom(S); mountSiteFoot(S); });
+</script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+{
+  "_license": "CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/) · © 2026 Vassil Kateliev · edugraphica.org",
+  "_status": "complete",
+  "site": {
+    "name": "Edugraphica",
+    "tagline": "Things worth knowing, explained in 3D",
+    "intro": "Interactive 3D models of ships, machines and places from history and science. Turn them, take them apart and read what every part does.",
+    "open": "Open",
+    "explore": "Explore in 3D"
+  },
+  "nav": {
+    "aria": "Site navigation",
+    "home": "All topics",
+    "partial": "partial",
+    "soon": "soon"
+  },
+  "ui": {
+    "parts": "Parts",
+    "partsCount": "{n} parts",
+    "partsAria": "Parts of the model",
+    "info": "Info",
+    "infoAria": "About the selected part",
+    "close": "Close",
+    "water": "Water",
+    "studio": "Studio",
+    "scene": "Scene",
+    "explode": "Explode",
+    "labels": "Labels",
+    "spin": "Spin",
+    "reset": "Reset",
+    "resetTitle": "Reset the camera",
+    "colour": "Colour",
+    "viewControls": "View controls",
+    "language": "Language",
+    "prev": "← Prev",
+    "next": "Next →",
+    "prevAria": "Previous part",
+    "nextAria": "Next part",
+    "zoom": "Zoom to it",
+    "overview": "Overview",
+    "overviewAria": "Back to overview",
+    "fade": "Fade the other parts",
+    "startTour": "Start the tour",
+    "didYouKnow": "Did you know?",
+    "loading": "Loading the model…",
+    "startError": "The 3D view could not start. Check your connection and reload the page.",
+    "canvasAria": "Interactive 3D model. Drag to rotate, scroll or pinch to zoom, click a part to learn about it."
+  },
+  "foot": {
+    "code": "Code: {l}",
+    "content": "Content: {l}"
+  },
+  "errors": {
+    "notFoundTitle": "Page not found",
+    "notFoundText": "This page does not exist. It may have moved, or it is still being built.",
+    "home": "Back to the start"
+  }
+}

@@ -1,0 +1,13 @@
+/* Drazki — microsite theme.
+   Loaded by every page of this microsite (drazki/ and drazki/story/), after the site-wide
+   tokens.css, base.css and the layout file. Change the look of the whole microsite here
+   by overriding the design tokens; never restyle shared components and never edit
+   assets/css/ for one microsite. Other microsites and the landing page are not affected. */
+
+:root {
+  --sea: #1f5d82;                 /* links: a deeper naval blue */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --sea: #6cb4dc; }
+}
+:root[data-theme="dark"] { --sea: #6cb4dc; }

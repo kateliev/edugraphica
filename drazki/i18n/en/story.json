@@ -1,0 +1,87 @@
+{
+  "_license": "CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/) · © 2026 Vassil Kateliev · edugraphica.org",
+  "_status": "complete",
+  "_sources": "documentation/drazki-sources.md — where sources disagree (firing distances, casualties) the text says so",
+  "pageTitle": "The night attack of 1912",
+  "chip": "21 November 1912",
+  "title": "The night attack",
+  "lead": "Four small torpedo boats against a big cruiser, in the dark, thirty miles out at sea. This is how Drazki won the most famous fight in the history of the Bulgarian Navy.",
+  "sections": [
+    {
+      "heading": "War on the Black Sea",
+      "paragraphs": [
+        "In October 1912 Bulgaria, Serbia, Greece and Montenegro went to war against the Ottoman Empire. It is called the First Balkan War. Most of the fighting was on land, but the sea mattered too: Ottoman ships could bring soldiers and supplies along the coast, or shell the Bulgarian ports.",
+        "The Ottoman fleet was much stronger. Its cruiser Hamidiye was a fast, modern warship more than 100 metres long, with big guns. The cruiser's commander, Hüseyin Rauf Bey, even demanded that Varna surrender, or he would shell the town.",
+        "The young Bulgarian Navy had no big ships. What it did have were six small torpedo boats from France. They could not fight a cruiser gun against gun – but at night, close up, a single torpedo could do what guns could not."
+      ]
+    },
+    {
+      "heading": "Out into the dark",
+      "paragraphs": [
+        "On the evening of 20 November 1912 four boats – Letyashti, Smeli, Strogi and Drazki – left Varna at half past ten. They slipped out through the gap in their own minefield, with all lights off, to hunt for enemy transport ships.",
+        "Captain Dimitar Dobrev led the group from Letyashti. Drazki, the last boat in the line, was commanded by a young officer, Midshipman Georgi Kupov."
+      ],
+      "fact": "The dates in old Bulgarian books are often 7–8 November. Bulgaria then used the old (Julian) calendar, which was 13 days behind the one we use today."
+    },
+    {
+      "heading": "The attack",
+      "figure": "attackMap",
+      "paragraphs": [
+        "Shortly after midnight, about 32 miles from Varna, the lookouts saw a large dark shape: the cruiser Hamidiye, with destroyers escorting her. Dobrev signalled: attack!",
+        "The boats went in one after another. Letyashti fired first, from 500–600 metres, and missed. Smeli and Strogi came closer and fired too, but the cruiser turned and the torpedoes passed by. The Ottoman gunners opened fire; Smeli was hit by a shell and damaged.",
+        "Drazki was last. Kupov did not fire early. He took his boat in much closer than the others – about 100 metres, some accounts say only 50 or 60 – and fired at 00:43. This time the torpedo hit the cruiser's bow and tore a hole of about 10 square metres in it."
+      ]
+    },
+    {
+      "heading": "Getting away",
+      "paragraphs": [
+        "Now the Ottoman destroyers came at full speed, firing. In the dark the four boats turned away and raced back to Varna. A shell fragment went through Drazki's second funnel – but no Bulgarian boat was lost.",
+        "Hamidiye did not sink: the sea was calm and her crew kept her afloat. Badly damaged, with 8 men killed and about 30 wounded, she was brought back to Constantinople (Istanbul) and spent weeks under repair."
+      ]
+    },
+    {
+      "heading": "Why it matters",
+      "paragraphs": [
+        "It was the first big success of the Bulgarian Navy, won by a few small boats against a much stronger ship. It showed what courage, surprise and a good plan can do.",
+        "Drazki served on through the First and Second World Wars and was taken out of service around 1950. On 21 November 1957, the 45th anniversary of the attack, she opened as a museum ship in Varna. Her original funnel – with the shell hole – her gun and other parts were fitted on her sister ship Strogi, which you can visit today in the Sea Garden. Georgi Kupov came to the opening."
+      ]
+    }
+  ],
+  "figureText": {
+    "attackMap": {
+      "caption": "How the four boats attacked, one after another. Each one came closer before firing; only Drazki's torpedo hit.",
+      "aria": "Diagram of the attack: four torpedo boats approach the cruiser Hamidiye one after another and fire; Drazki, the last and closest, hits the bow.",
+      "hamidiye": "Hamidiye",
+      "escorts": "escorting destroyers",
+      "boats": ["Letyashti", "Smeli", "Strogi", "Drazki"],
+      "dist": ["500–600 m · missed", "closer · missed", "closer · missed", "≈ 100 m · hit!"],
+      "hit": "hit",
+      "varna": "Varna, about 32 miles",
+      "notToScale": "Not to scale"
+    }
+  },
+  "facts": {
+    "heading": "The attack in numbers",
+    "spec": [["Date", "21 November 1912"], ["Time of the hit", "00:43"], ["Place", "≈ 32 miles from Varna"], ["Bulgarian boats", "4"], ["Torpedoes that hit", "1 (Drazki)"], ["Closest distance", "≈ 100 m (or less)"], ["Hole in Hamidiye", "≈ 10 m²"], ["Bulgarian boats lost", "0"]]
+  },
+  "timeline": {
+    "heading": "That night",
+    "items": [["22:30", "Four torpedo boats leave Varna, lights off."], ["≈ 00:30", "The lookouts see the cruiser Hamidiye and her escorts."], ["00:40", "Signal to attack."], ["00:43", "Drazki fires from close range and hits the bow."], ["after", "The boats escape in the dark and return to Varna."]]
+  },
+  "cta": {
+    "heading": "See the ship",
+    "text": "Explore Drazki in 3D: open the cutaway to see the engine, turn the torpedo tubes and fire, and find the shell hole in the second funnel.",
+    "label": "Open the 3D model",
+    "href": "drazki/"
+  },
+  "sources": {
+    "heading": "Sources",
+    "items": [
+      ["Wikipedia: Bulgarian torpedo boat Drazki", "https://en.wikipedia.org/wiki/Bulgarian_torpedo_boat_Drazki"],
+      ["Уикипедия: Дръзки (миноносец)", "https://bg.wikipedia.org/wiki/Дръзки_(миноносец)"],
+      ["Varna Eye: Engagement by the Druzki", "https://www.varnaeye.com/history/engagement-by-the-druzki/"],
+      ["Naval Museum Varna: the Drazki museum ship", "https://museummaritime-bg.com/en/expositions/the-drazki-battleship-museum/"],
+      ["navypedia: Druzki torpedo boats (1907–1909)", "https://navypedia.org/ships/bulgaria/bu_dd_drzki.htm"]
+    ]
+  }
+}

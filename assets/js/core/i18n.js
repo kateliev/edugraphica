@@ -1,0 +1,92 @@
+/*! edugraphica.org · © 2026 Vassil Kateliev
+ *  PolyForm Noncommercial 1.0.0 — https://polyformproject.org/licenses/noncommercial/1.0.0
+ *  Commercial use requires permission. See README for permitted uses. */
+// Edugraphica — translations.
+// Strings live in JSON files, one per namespace and language:
+//   site-wide:   /i18n/<lang>/<ns>.json              (common.json = interface words)
+//   microsite:   /<site>/i18n/<lang>/<ns>.json       (site.json = name, tagline, tab labels)
+// Every lookup falls back to English, so a half-translated language still shows a complete page.
+
+import { LANGS, DEFAULT_LANG, glossFor } from './config.js';
+
+export const ROOT = new URL('../../../', import.meta.url);   // site root, wherever the site is served from
+const STORE_KEY = 'eg.lang';
+const codes = LANGS.map(l => l.code);
+// Plural rules of the page language; set by pickLang(), used by t().
+let plural = new Intl.PluralRules(DEFAULT_LANG);
+
+// Base folder of a string scope: no site = the site-wide strings, else the microsite's own.
+const base = site => new URL(site ? `${site}/i18n/` : 'i18n/', ROOT);
+
+export function pickLang() {
+  const lang = choose();
+  plural = new Intl.PluralRules(lang);
+  return lang;
+}
+function choose() {
+  const q = new URLSearchParams(location.search).get('lang');
+  if (q && codes.includes(q)) { save(q); return q; }
+  const saved = load();
+  if (saved && LANGS.find(l => l.code === saved && (l.ready || l.partial))) return saved;
+  for (const n of navigator.languages || [navigator.language]) {
+    const c = (n || '').slice(0, 2).toLowerCase();
+    if (LANGS.find(l => l.code === c && l.ready)) return c;
+  }
+  return DEFAULT_LANG;
+}
+export function pickGloss(lang) {
+  const q = new URLSearchParams(location.search).get('gloss');
+  if (q === 'none') return null;
+  return q && codes.includes(q) ? q : glossFor(lang);
+}
+export function setLang(code) {
+  save(code);
+  const u = new URL(location.href); u.searchParams.set('lang', code); location.href = u.toString();
+}
+
+async function fetchJSON(lang, ns, site) {
+  try {
+    const r = await fetch(new URL(`${lang}/${ns}.json`, base(site)));
+    return r.ok ? await r.json() : {};
+  } catch { return {}; }
+}
+function merge(over, baseObj) {
+  if (Array.isArray(over)) return over;
+  if (!over || typeof over !== 'object') return over === undefined ? baseObj : over;
+  const out = { ...(baseObj || {}) };
+  for (const k of Object.keys(over)) if (!k.startsWith('_')) out[k] = merge(over[k], out[k]);
+  return out;
+}
+
+// Load one namespace for `lang`, filled in with English where missing.
+// `site` = microsite id for the microsite's own strings; omit it for the site-wide ones.
+export async function loadStrings(ns, lang, site) {
+  const en = await fetchJSON(DEFAULT_LANG, ns, site);
+  return lang === DEFAULT_LANG ? en : merge(await fetchJSON(lang, ns, site), en);
+}
+// Load only what a language really has (no fallback), e.g. for glossary names.
+export async function loadRaw(ns, lang, site) { return lang ? fetchJSON(lang, ns, site) : {}; }
+
+// t(dict, 'ui.parts', {n: 4}) → string with {n} filled in; returns the key if missing.
+// A value may be a plural object {one, few, many, other}: the form is picked
+// from vars.n with Intl.PluralRules of the page language ('other' as fallback).
+export function t(dict, path, vars) {
+  let v = path.split('.').reduce((o, k) => (o == null ? o : o[k]), dict);
+  if (v && typeof v === 'object' && typeof v.other === 'string') v = v[plural.select(Number(vars?.n))] ?? v.other;
+  if (typeof v !== 'string') return v ?? path;
+  if (vars) v = v.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
+  return v;
+}
+// Fill elements marked data-i18n="key" (text) or data-i18n-attr="attr:key;attr2:key2".
+// Several dictionaries may be given: the first one that has the key wins.
+export function applyDom(dicts, root = document) {
+  const list = [].concat(dicts);
+  const look = k => { for (const d of list) { const v = t(d, k); if (v !== k) return v; } return k; };
+  root.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = look(el.dataset.i18n); });
+  root.querySelectorAll('[data-i18n-attr]').forEach(el => {
+    for (const pair of el.dataset.i18nAttr.split(';')) { const [a, k] = pair.split(':'); el.setAttribute(a.trim(), look(k.trim())); }
+  });
+}
+
+function save(c) { try { localStorage.setItem(STORE_KEY, c); } catch { /* storage blocked */ } }
+function load() { try { return localStorage.getItem(STORE_KEY); } catch { return null; } }

@@ -20,3 +20,15 @@ raw/
 *.dxf
 *.tif
 *.tiff
+
+# Claude's working memory for this project: local only, never published
+.claude/memory/
+.claude/settings.local.json
+
+# Owner's private notes (local only)
+documentation/private/
+
+# local tooling
+__pycache__/
+*.log
+desktop.ini

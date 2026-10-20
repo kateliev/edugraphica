@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The night attack of 1912 · Drazki · Edugraphica</title>
+<meta name="description" content="How the Bulgarian torpedo boat Drazki torpedoed the Ottoman cruiser Hamidiye on the night of 21 November 1912, told step by step with a diagram and a timeline.">
+<meta name="copyright" content="© 2026 Vassil Kateliev · edugraphica.org">
+<link rel="license" href="https://polyformproject.org/licenses/noncommercial/1.0.0" title="Code: PolyForm Noncommercial 1.0.0">
+<link rel="license" href="https://creativecommons.org/licenses/by-nc-sa/4.0/" title="Content: CC BY-NC-SA 4.0">
+<link rel="icon" href="../../assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- style cascade: site-wide tokens and components → article layout → this microsite's theme -->
+<link rel="stylesheet" href="../../assets/css/tokens.css">
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="../../assets/css/article.css">
+<link rel="stylesheet" href="../site.css">
+</head>
+<body class="article">
+<div class="article-wrap">
+  <nav id="siteNav" class="site-nav panel"></nav>
+  <main id="article" aria-live="polite"></main>
+  <footer id="siteFoot" class="site-foot"></footer>
+</div>
+<script type="module">
+  import { startArticle } from '../../assets/js/pages/article.js';
+  import { attackMap } from './attack-map.js';
+  startArticle({ site: 'drazki', ns: 'story', current: 'story', figures: { attackMap } }).catch(err => console.error(err));
+</script>
+</body>
+</html>

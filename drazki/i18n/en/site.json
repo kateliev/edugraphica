@@ -1,0 +1,11 @@
+{
+  "_license": "CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/) · © 2026 Vassil Kateliev · edugraphica.org",
+  "_status": "complete",
+  "name": "Drazki",
+  "tagline": "The torpedo boat that made history",
+  "card": "A 3D model of the Bulgarian torpedo boat Drazki: 44 parts from the boilers to the torpedo tubes, and the story of her night attack in 1912.",
+  "nav": {
+    "ship": "The ship",
+    "story": "The 1912 attack"
+  }
+}

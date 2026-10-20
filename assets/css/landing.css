@@ -1,0 +1,39 @@
+/* Edugraphica — landing page layout (the site root).
+   Built on tokens.css and base.css: navigation bar, a hero with the site mark,
+   and a grid of microsite cards (from MICROSITES in assets/js/core/config.js).
+   The first card is wide on large screens, so a single topic still looks deliberate. */
+
+body.landing {
+  min-height: 100%;
+  background:
+    radial-gradient(1200px 520px at 85% -10%, color-mix(in srgb, var(--sea) 22%, transparent), transparent 70%),
+    radial-gradient(900px 420px at -10% 110%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%),
+    var(--stage);
+}
+.landing-wrap { max-width: 1180px; margin: 0 auto; padding: 12px var(--gutter) 28px; display: flex; flex-direction: column; min-height: 100vh; }
+.landing-wrap > .site-nav { margin-left: auto; }
+
+/* hero */
+.landing-hero { padding: 48px 4px 34px; max-width: 760px; }
+.landing-mark { font-family: var(--font-display); font-weight: 700; font-size: clamp(54px, 11vw, 112px); line-height: .9; letter-spacing: .04em; text-transform: uppercase; margin: 0 0 14px; color: var(--ink); }
+.landing-mark b { color: var(--accent); }
+.landing-tagline { font-family: var(--font-display); font-weight: 600; font-size: clamp(20px, 3vw, 28px); letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 12px; }
+.landing-intro { font-size: 17px; line-height: 1.55; margin: 0; max-width: 60ch; }
+
+/* microsite cards */
+.landing-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; flex: 1 0 auto; align-content: start; }
+.site-card { display: flex; flex-direction: column; overflow: hidden; text-decoration: none; color: var(--ink); transition: transform .15s, box-shadow .15s, border-color .15s; }
+.site-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+.site-card img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--chip); }
+.site-card .body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; }
+.site-card h2 { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-h2); line-height: 1; letter-spacing: .02em; text-transform: uppercase; margin: 0; }
+.site-card .tagline { font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin: 0; }
+.site-card p { margin: 0; }
+.site-card .row { margin-top: 8px; }
+@media (min-width: 900px) {
+  .site-card:first-child { grid-column: span 2; flex-direction: row; }
+  .site-card:first-child img { width: 58%; aspect-ratio: auto; min-height: 300px; }
+  .site-card:first-child .body { justify-content: center; padding: 24px 26px; }
+}
+
+.landing-wrap > .site-foot { margin-top: 28px; }
