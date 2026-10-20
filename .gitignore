@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Working / source materials (not published)
+refs/
+source/
+raw/
+*.pdf
+*.ai
+*.psd
+*.fig
+*.afdesign
+*.blend
+*.blend1
+*.dwg
+*.dxf
+*.tif
+*.tiff
