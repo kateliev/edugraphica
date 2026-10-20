@@ -167,6 +167,8 @@ export function createDrazki({ registry, M, t }) {
     woodLight: std('#c8a273', { roughness: .7, envMapIntensity: .45 }),
     canvas: std('#d6c7a2', { roughness: .95 }),
     redPaint: std('#b8281d', { roughness: .6, side: THREE.BackSide }),
+    shaft: std('#0c0d0f', { roughness: 1, side: THREE.BackSide, envMapIntensity: 0 }),   // inside of ducts
+    void: std('#050506', { roughness: 1, envMapIntensity: 0, side: THREE.DoubleSide }),  // the dark depth of a duct
     white: std('#efefe9', { roughness: .5 }),
     glass: new THREE.MeshPhysicalMaterial({ color: '#1c2a36', roughness: .06, metalness: .1, clearcoat: 1 }),
     boiler: std('#3d4247', { roughness: .8, metalness: .05, envMapIntensity: .3 }),
@@ -362,7 +364,8 @@ export function createDrazki({ registry, M, t }) {
     g.position.set(X(f.xa), CASE_TOP - .05, 0); g.rotation.z = FUN_RAKE;
     g.add(mesh(tf(new THREE.CylinderGeometry(FUN_R, FUN_R, h - .24, 32, 1, true), [0, (h - .24) / 2, 0]), MAT.grey));
     g.add(mesh(tf(new THREE.CylinderGeometry(FUN_R + .006, FUN_R + .006, .24, 32, 1, true), [0, h - .12, 0]), MAT.black));
-    g.add(mesh(tf(new THREE.CylinderGeometry(FUN_R - .01, FUN_R - .01, h, 32, 1, true), [0, h / 2, 0]), new THREE.MeshStandardMaterial({ color: '#0d0f12', side: THREE.BackSide, roughness: 1 })));
+    g.add(mesh(tf(new THREE.CylinderGeometry(FUN_R - .01, FUN_R - .01, h, 32, 1, true), [0, h / 2, 0]), MAT.shaft));   // sooty inside
+    g.add(mesh(tf(new THREE.CircleGeometry(FUN_R - .01, 32), [0, .3, 0], [-Math.PI / 2, 0, 0]), MAT.void));            // the uptake goes on down to the boiler: dark
     g.add(mesh(tf(new THREE.TorusGeometry(FUN_R, .025, 8, 40), [0, h, 0], [Math.PI / 2, 0, 0]), MAT.black));
     g.add(mesh(tf(new THREE.CylinderGeometry(FUN_R + .05, FUN_R + .16, .16, 32), [0, .07, 0]), MAT.grey));   // flared base
     // steam pipe up the back, whistle on the forward funnel
@@ -400,10 +403,14 @@ export function createDrazki({ registry, M, t }) {
   function cowl(xa, w, r, height, facing) {
     const g = new THREE.Group(), R = r * 1.25, y0 = deckY(xa, w) - .05;
     g.add(mesh(tf(new THREE.CylinderGeometry(r, r * 1.08, height, 20), [0, height / 2, 0]), MAT.grey));
-    g.add(mesh(tf(new THREE.TorusGeometry(R, r, 14, 20, Math.PI / 2), [R, height, 0], [0, 0, Math.PI / 2]), MAT.grey));
+    const bend = tf(new THREE.TorusGeometry(R, r, 14, 20, Math.PI / 2), [R, height, 0], [0, 0, Math.PI / 2]);
+    g.add(mesh(bend, MAT.grey), mesh(bend.clone(), MAT.shaft));   // dark inside: the duct runs down into the ship
     const bell = new THREE.LatheGeometry([[r, 0], [r * 1.12, r * .4], [r * 1.45, r * .8], [r * 1.75, r * 1.05]].map(([a, b]) => new THREE.Vector2(a, b)), 24);
     bell.rotateZ(-Math.PI / 2); bell.translate(R, height + R, 0);
     g.add(mesh(bell, MAT.grey), mesh(bell.clone(), MAT.redPaint));
+    // throat: where the red mouth meets the pipe the duct turns down out of sight, so it reads as a dark void
+    const throat = new THREE.CircleGeometry(r * 1.02, 24); throat.rotateY(Math.PI / 2); throat.translate(R + r * .12, height + R, 0);
+    g.add(mesh(throat, MAT.void));
     g.position.set(X(xa), y0, w); g.rotation.y = facing;
     return g;
   }
