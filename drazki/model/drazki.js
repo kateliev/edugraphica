@@ -6,22 +6,25 @@
 // Sources (see documentation/drazki-sources.md):
 //   * Builder's general arrangement, "Torpedo-boats and slipway for the Bulgarian Government,
 //     constructed by Messrs. Schneider and Co., Creusot and Chalon-sur-Saône" (Engineering, c. 1908):
-//     profile, deck plan and two sections; length 38.000 m, beam 4.400 m, draught ≈ 1.33 m,
-//     2.63 m to the propeller tip. Positions below are measured off that drawing.
+//     profile, deck plan and two sections; length 38.000 m, beam 4.400 m, draught 1.220 m (Fig. 5),
+//     depth 2.750 m, 1.33 m to the rudder foot, 2.63 m to the propeller tip. Positions below are measured off that drawing.
 //   * navypedia.org: 97.5 t, 1 shaft, 1 triple-expansion engine, 2 Normand boilers, 1950 hp, 26 kn,
 //     11 t coal, 2 × 47 mm guns, 1 twin 450 mm tube + 1 bow 450 mm tube, crew 27–32.
 //   * The museum ship in Varna and the cutaway builder's model in the Naval Museum, Varna (photos):
 //     colours, conning tower, funnels, cowls, galley stove, twin-tube "spoon", nets, dinghy.
-// Hull lines are fitted to the drawing; there are no published offsets.
+//   * French midship section "Coupe au Maître", torpilleurs No 315… (Schneider 38 m type), in V. Draganov,
+//     "Дръзки в трето измерение", Morski vestnik, 9 Nov 2025: the lower hull is an ellipse (PL 2), the
+//     topsides tumble home to a crowned deck (QU ≈ 3.3, deck edge ≈ ±1.80 m at 1.36 m); rubbing strake 0.40 m above WL.
+// Hull lines are fitted to these drawings; there are no published offsets.
 //
 // Units: metres. xa = distance forward of the stern (0 … 38). World: +x bow, +y up (0 = waterline),
 // +z starboard. The model's origin is amidships (xa = 19).
 import * as THREE from 'three';
 import { mergeBufferGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { V3, UP, clamp, smooth, deg, rnd, mono, canvasTex, tube, displayFont, pillowGeo, roundRect } from '../../assets/js/explorer/geometry.js';
+import { V3, UP, clamp, smooth, deg, rnd, mono, canvasTex, tube, polyCurve, displayFont, pillowGeo, roundRect } from '../../assets/js/explorer/geometry.js';
 import { addSurfaceNoise } from '../../assets/js/explorer/surface.js';
 
-export const DIMS = { length: 38, beam: 4.4, draught: 1.33, propTip: 2.3 };
+export const DIMS = { length: 38, beam: 4.4, draught: 1.22, propTip: 2.3 };
 
 export function createDrazki({ registry, M, t }) {
   const { add, adopt, PART } = registry;
@@ -35,11 +38,11 @@ export function createDrazki({ registry, M, t }) {
      "turtle-back" on the forecastle). All curves are monotone splines in xa.
      ===================================================================== */
   const B = mono([[0, 0], [.25, .62], [.8, 1.06], [1.8, 1.47], [3.2, 1.8], [5, 2.02], [7, 2.14], [9.5, 2.2], [20, 2.2], [23.5, 2.15], [27, 1.95], [30, 1.66], [33, 1.24], [35.5, .8], [37.2, .36], [38, 0]]);
-  const KEEL = mono([[0, .5], [1, .3], [2.5, 0], [4, -.35], [6, -.8], [8.5, -1.15], [11, -1.3], [13, -1.33], [33.5, -1.33], [35.5, -1.28], [37, -1.12], [37.7, -.95], [38, -.8]]);
+  const KEEL = mono([[0, .02], [1, -.2], [2.5, -.48], [4.2, -.77], [6.5, -1.08], [9, -1.19], [12, -1.22], [33.5, -1.22], [35.5, -1.17], [37, -1.03], [37.7, -.88], [38, -.75]]);
   const ZM = mono([[0, .8], [3, .62], [7, .5], [12, .5], [24, .5], [29, .55], [33, .72], [38, 1.0]]);
-  const TOP = mono([[0, 1.12], [4, 1.22], [10, 1.38], [16, 1.46], [24, 1.5], [25.9, 1.53], [26.5, 1.76], [27.3, 1.97], [30, 1.98], [33, 1.92], [38, 1.86]]);
-  const PL = mono([[0, 2.2], [6, 2.5], [12, 2.7], [24, 2.7], [30, 2.05], [35, 1.6], [38, 1.45]]);
-  const QU = mono([[0, 5], [24, 5.5], [25.9, 5.5], [26.6, 3.6], [27.4, 2.7], [38, 2.5]]);
+  const TOP = mono([[0, 1.2], [4, 1.27], [10, 1.4], [16, 1.48], [24, 1.53], [25.9, 1.55], [26.5, 1.76], [27.3, 1.97], [30, 1.98], [33, 1.92], [38, 1.86]]);
+  const PL = mono([[0, 2.0], [6, 2.1], [12, 2.0], [24, 2.0], [30, 1.8], [35, 1.6], [38, 1.45]]);
+  const QU = mono([[0, 3.6], [24, 3.3], [25.9, 3.3], [26.6, 3.0], [27.4, 2.7], [38, 2.5]]);
   const sec = xa => ({ b: Math.max(B(xa), 0), k: KEEL(xa), zm: ZM(xa), top: TOP(xa), pl: PL(xa), qu: QU(xa) });
   const FC = 26.6;   // forecastle break: the turtle-back starts here
 
@@ -235,6 +238,26 @@ export function createDrazki({ registry, M, t }) {
     g.rotateY(Math.PI / 2); g.translate(X(xa0) + bevel, 0, 0); return g;   // after rotateY(π/2): shape x → −z, depth → +x
   }
   const rrShape = (x0, y0, x1, y1, r) => roundRect(x0, y0, x1, y1, r, r, r, r);
+  // Chain: torus links along a curve through pts, every other link turned 90°.
+  function chainLinks(pts, r = .045) {
+    const curve = new THREE.CatmullRomCurve3(pts), L = curve.getLength(), n = Math.floor(L / (r * 2.6)), gs = [];
+    for (let i = 0; i < n; i++) {
+      const u = i / n, p = curve.getPointAt(u), tn = curve.getTangentAt(u);
+      const lg = new THREE.TorusGeometry(r, r * .3, 5, 10); lg.scale(1.5, 1, 1);
+      const q = new THREE.Quaternion().setFromUnitVectors(new V3(1, 0, 0), tn).multiply(new THREE.Quaternion().setFromAxisAngle(new V3(1, 0, 0), i % 2 ? Math.PI / 2 : 0));
+      lg.applyMatrix4(M4.compose(p, q, new V3(1, 1, 1))); gs.push(lg);
+    }
+    return mergeGeos(gs);
+  }
+  // Superellipse ("squared oval") outline, centred on (cx, cy).
+  function squircle(a, b, e = 4, n = 40, path = new THREE.Shape(), cx = 0, cy = 0) {
+    for (let i = 0; i <= n; i++) {
+      const t = i / n * Math.PI * 2, c = Math.cos(t), s = Math.sin(t);
+      const x = cx + a * Math.sign(c) * Math.pow(Math.abs(c), 2 / e), y = cy + b * Math.sign(s) * Math.pow(Math.abs(s), 2 / e);
+      i ? path.lineTo(x, y) : path.moveTo(x, y);
+    }
+    return path;
+  }
 
   const root = new THREE.Group();
 
@@ -263,23 +286,103 @@ export function createDrazki({ registry, M, t }) {
     add(root, 'stem', tube(new THREE.CatmullRomCurve3(pts, false, 'centripetal', .4), .055, MAT.grey, 60));
   }
 
-  // Breakwater: a V of plates on the forecastle that throws spray aside before it reaches the conning tower.
+  // Bridge wings: two platforms of perforated steel plate, one on each side of the conning tower and the
+  // forecastle, level with the top of the forecastle (CAD reconstruction, Draganov 2025; owner's notes).
+  // They start flush with the back of the tower and keep their width forward; the outer edge stands out
+  // over the hull side. Between them the plain forecastle deck forms an alley where the
+  // hand winch stands. Perforated rib brackets carry the aft half of each wing; a half breakwater closes the
+  // forward half down to the hull and curves in at the front.
+  const PY = 2.0, WING = { xa0: 26.0, xa1: 29.6, yHull: 1.15, alley: .6, ct: .83, ctx: 27.58 };
+  const wingOut = xa => hb(xa, WING.yHull) - .01;   // outer edge: over the hull side at yHull
+  // Height where something standing at |z| = w meets the hull (on the side below the deck edge, else on the deck).
+  const yUnder = (xa, w) => {
+    const e = edge(xa); if (w <= e.w) return deckY(xa, w);
+    let lo = ZM(xa), hi = e.h; for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; hb(xa, m) > w ? lo = m : hi = m; }
+    return lo;
+  };
   {
-    const pts = []; const apex = 28.95, aft = 28.1, half = 1.15;
-    for (const sd of [1, -1]) for (let i = 0; i <= 10; i++) {
-      const f = i / 10, xa = apex + (aft - apex) * f, w = half * f, y0 = deckY(xa, w) - .04;
-      pts.push({ sd, f, a: new V3(X(xa), y0, sd * w), b: new V3(X(xa) + .07, y0 + .38 - .1 * f, sd * w) });
-    }
-    const pos = [], idx = []; let k = 0;
+    const g = new THREE.Group(), xs = []; for (let xa = WING.xa0; xa <= WING.xa1 + 1e-6; xa += .1) xs.push(xa);
+    // perforated plate: round holes in staggered rows, about 6 cm apart (CAD close-ups)
+    const gratTex = canvasTex(128, 128, (c, W) => {
+      c.fillStyle = '#8d959c'; c.fillRect(0, 0, W, W); c.globalCompositeOperation = 'destination-out';
+      for (let j = 0; j < 8; j++) for (let i = 0; i <= 8; i++) { c.beginPath(); c.arc((i + (j % 2) * .5) * W / 8, (j + .5) * W / 8, 4.2, 0, Math.PI * 2); c.fill(); }
+    }, false);
+    gratTex.wrapS = gratTex.wrapT = THREE.RepeatWrapping; gratTex.repeat.set(2, 2); gratTex.anisotropy = 8;
+    const gm = new THREE.MeshStandardMaterial({ map: gratTex, alphaTest: .5, side: THREE.DoubleSide, roughness: .6, metalness: .4 });
+    const pm = MAT.grey.clone(); pm.side = THREE.DoubleSide;
+    const ribs = [], bw = [];
     for (const sd of [1, -1]) {
-      const row = pts.filter(p => p.sd === sd);
-      row.forEach(p => { pos.push(p.a.x, p.a.y, p.a.z, p.b.x, p.b.y, p.b.z); });
-      for (let i = 0; i < row.length - 1; i++) { const a = k + 2 * i; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
-      k += row.length * 2;
+      // plan outline: inner edge (stepping in at the front of the tower), front, outer edge back to the tower
+      const pts = [[WING.xa0, WING.ct], [WING.ctx, WING.ct], [WING.ctx, WING.alley], [WING.xa1, WING.alley]];
+      for (let i = xs.length - 1; i >= 0; i--) pts.push([xs[i], wingOut(xs[i])]);
+      const sh = new THREE.Shape(); pts.forEach(([xa, z], i) => (i ? sh.lineTo(X(xa), -sd * z) : sh.moveTo(X(xa), -sd * z))); sh.closePath();
+      const gg = new THREE.ShapeGeometry(sh); gg.rotateX(-Math.PI / 2); gg.translate(0, PY, 0);
+      g.add(mesh(gg, gm));
+      const rim = pts.concat([pts[0]]).map(([xa, z]) => new V3(X(xa), PY - .02, sd * z));
+      g.add(tube(polyCurve(rim), .026, MAT.grey, rim.length * 2));
+      // rib brackets under the aft half of the wing: steel plates with round lightening holes, from the hull
+      // side and the deck edge up to the underside of the walking plate; they narrow to a point on the hull
+      for (const xa of [26.1, 26.75, 27.4]) {
+        const e = edge(xa), zo = wingOut(xa) - .02, zi = Math.max(e.w - .25, (xa < WING.ctx ? WING.ct : WING.alley) + .05);
+        const yl = WING.yHull - .12, zh = hb(xa, yl), k = new THREE.Shape();
+        k.moveTo(zi, PY - .03); k.lineTo(zo, PY - .03); k.lineTo(zh, yl); k.lineTo(e.w, e.h - .01); k.lineTo(zi, deckY(xa, zi) - .01); k.closePath();
+        const zm = (zi + zo) / 2;
+        for (const t of [.28, .52]) k.holes.push(new THREE.Path().absarc(zm + (zh - zm) * t, PY - .03 + (yl - PY + .03) * t, .045, 0, Math.PI * 2, true));
+        const kg = new THREE.ExtrudeGeometry(k, { depth: .012, bevelEnabled: false });
+        kg.rotateY(-Math.PI / 2); kg.translate(X(xa) + .006, 0, 0);   // shape x → +z after the turn
+        if (sd < 0) kg.scale(1, 1, -1);
+        ribs.push(kg);
+      }
+      // half breakwater: a plate along the outer edge of the forward half of the wing, from the walking plate
+      // down to the hull side, curving in at the front to the edge of the alley, where it rises and leans forward
+      const path = [];
+      for (let xa = 27.9; xa < 29.45; xa += .1) path.push({ xa, z: wingOut(xa) + .006, u: 0 });
+      const a = [29.45, wingOut(29.45) + .006], c = [29.95, wingOut(WING.xa1)], b = [30.0, WING.alley + .02];
+      for (let i = 0; i <= 12; i++) { const u = i / 12; path.push({ xa: (1 - u) ** 2 * a[0] + 2 * u * (1 - u) * c[0] + u * u * b[0], z: (1 - u) ** 2 * a[1] + 2 * u * (1 - u) * c[1] + u * u * b[1], u }); }
+      const pos = [], idx = [], top = [];
+      path.forEach(({ xa, z, u }, i) => {
+        const yt = PY + .04 + .14 * u, lean = .05 * u;
+        pos.push(X(xa), yUnder(xa, z) - .03, sd * z, X(xa) + lean, yt, sd * z); top.push(new V3(X(xa) + lean, yt, sd * z));
+        if (i) idx.push(2 * i - 2, 2 * i - 1, 2 * i, 2 * i - 1, 2 * i + 1, 2 * i);
+      });
+      const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); bg.setIndex(idx); bg.computeVertexNormals();
+      bw.push(bg, tube(top, .02, MAT.grey, 40).geometry);
     }
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
-    const m = MAT.grey.clone(); m.side = THREE.DoubleSide;
-    add(root, 'breakwater', mesh(g, m));
+    g.add(mesh(mergeGeos(ribs), pm));
+    add(root, 'bridge', g);
+    add(root, 'breakwater', mesh(mergeGeos(bw), pm));
+  }
+  // Hand winch on the forecastle in front of the conning tower, between the bridge wings (CAD reconstruction): two side frames
+  // with long legs leaning towards the tower, the crank shaft on top with two waisted warping drums, and
+  // under it a big gear wheel and a dark flywheel. Turn the cranks and the drums haul in the mooring ropes.
+  {
+    const g = new THREE.Group(), ys = .74, yg = .4, xs = -.04, xg = .03; g.position.set(X(28.7), deckY(28.7, 0) - .02, 0);
+    const frame = [];
+    for (const sd of [1, -1]) {
+      const z = sd * .12;
+      for (const dz of [-.025, .025]) frame.push(cylGeo(new V3(.36, 0, z + dz), new V3(xs, ys, z + dz), .022, 8));   // long legs
+      frame.push(cylGeo(new V3(-.16, 0, z), new V3(xg - .02, yg + .02, z), .025, 8));                                 // back post
+      frame.push(cylGeo(new V3(xg, yg, z), new V3(xs, ys, z), .03, 8));                                              // web between the bearings
+      frame.push(tf(new THREE.BoxGeometry(.12, .02, .1), [.36, .01, z]), tf(new THREE.BoxGeometry(.12, .02, .1), [-.16, .01, z]));   // feet
+      frame.push(tf(new THREE.CylinderGeometry(.045, .045, .06, 14), [xs, ys, z], [Math.PI / 2, 0, 0]), tf(new THREE.CylinderGeometry(.04, .04, .06, 14), [xg, yg, z], [Math.PI / 2, 0, 0]));
+    }
+    g.add(mesh(mergeGeos(frame), MAT.grey));
+    const iron = [cylGeo(new V3(xs, ys, -.46), new V3(xs, ys, .46), .025, 10), cylGeo(new V3(xg, yg, -.26), new V3(xg, yg, .2), .022, 10)];
+    iron.push(tf(new THREE.CylinderGeometry(.27, .27, .03, 40), [xg, yg, 0], [Math.PI / 2, 0, 0]));                  // big gear
+    for (let i = 0; i < 36; i++) { const an = i / 36 * Math.PI * 2; iron.push(tf(new THREE.BoxGeometry(.03, .025, .03), [xg + Math.cos(an) * .28, yg + Math.sin(an) * .28, 0], [0, 0, an])); }
+    iron.push(tf(new THREE.CylinderGeometry(.07, .07, .04, 18), [xs, ys, 0], [Math.PI / 2, 0, 0]));                  // pinion
+    g.add(mesh(mergeGeos(iron), MAT.iron));
+    // flywheel / brake drum on the gear shaft, outside the port frame
+    g.add(mesh(mergeGeos([tf(new THREE.CylinderGeometry(.17, .17, .05, 32), [xg, yg, -.21], [Math.PI / 2, 0, 0]), tf(new THREE.TorusGeometry(.17, .022, 8, 32), [xg, yg, -.21])]), MAT.black));
+    g.add(mesh(tf(new THREE.CylinderGeometry(.05, .05, .08, 14), [xg, yg, -.21], [Math.PI / 2, 0, 0]), MAT.steel));
+    const drum = new THREE.LatheGeometry([[.1, -.08], [.075, -.05], [.06, 0], [.075, .05], [.1, .08]].map(([r, y]) => new THREE.Vector2(r, y)), 20);
+    g.add(mesh(mergeGeos([-1, 1].map(sd => tf(drum.clone(), [xs, ys, sd * .25], [Math.PI / 2, 0, 0]))), MAT.bronze));
+    for (const sd of [1, -1]) {   // crank handles at both ends, opposite each other
+      const an = sd > 0 ? deg(35) : deg(215), arm = new V3(xs + Math.cos(an) * .2, ys + Math.sin(an) * .2, sd * .42);
+      g.add(mesh(cylGeo(new V3(xs, ys, sd * .42), arm, .016, 8), MAT.iron));
+      g.add(mesh(cylGeo(arm, arm.clone().add(new V3(0, 0, sd * .15)), .024, 10), MAT.wood));
+    }
+    add(root, 'winch', g);
   }
 
   // Watertight bulkheads: plates following the hull section.
@@ -345,23 +448,37 @@ export function createDrazki({ registry, M, t }) {
      ===================================================================== */
   const CASE_TOP = 1.98;
   {
-    // boiler-room casing around both funnel bases
-    const sh = rrShape(X(17.0), -.78, X(25.3), .78, .32);
-    add(root, 'deck', mesh(extrudeUp(sh, 1.38, CASE_TOP - 1.38, .03), MAT.grey));
-    // stokehold hatch between the funnels
-    add(root, 'hatches', mesh(extrudeUp(rrShape(X(20.85), -.32, X(21.45), .32, .05), CASE_TOP, .14, .02), MAT.greyLight));
+    // boiler-room casing in two parts, one round each funnel base: the aft part is about twice as long
+    add(root, 'deck', mesh(mergeGeos([extrudeUp(rrShape(X(17.0), -.78, X(21.25), .78, .32), 1.38, CASE_TOP - 1.38, .03),
+      extrudeUp(rrShape(X(21.85), -.78, X(24.3), .78, .45), 1.38, CASE_TOP - 1.38, .03)]), MAT.grey));
+    // stokehold hatch between the two parts, down on the deck: a low coaming and a lid
+    const yh = deckY(21.55, 0) - .03;
+    add(root, 'hatches', group(mesh(extrudeUp(rrShape(X(21.3), -.36, X(21.8), .36, .05), yh, .13), MAT.grey),
+      mesh(extrudeUp(rrShape(X(21.27), -.39, X(21.83), .39, .06), yh + .13, .04, .015), MAT.greyLight)));
   }
   {
-    // engine-room skylight with round deck lights
-    const g = new THREE.Group();
-    g.add(mesh(extrudeUp(rrShape(X(12.4), -.7, X(16.3), .7, .12), 1.36, .6, .03), MAT.grey));
-    const rims = [], lights = [];
-    for (const zz of [-.36, .36]) for (let i = 0; i < 6; i++) {
-      const p = new V3(X(12.75 + i * .63), 1.965, zz);
-      rims.push(tf(new THREE.TorusGeometry(.12, .025, 8, 20), p.toArray(), [Math.PI / 2, 0, 0]));
-      lights.push(tf(new THREE.CircleGeometry(.11, 20), [p.x, p.y - .004, p.z], [-Math.PI / 2, 0, 0]));
+    // engine-room skylight: a low casing, plain steel over its aft quarter, then three raised hatches
+    // with sloping sides and small windows in them (CAD reconstruction, Draganov 2025)
+    const g = new THREE.Group(), y1 = 1.96, ST = { xa0: 12.4, xa1: 16.3, hw: .7 };
+    g.add(mesh(extrudeUp(rrShape(X(ST.xa0), -ST.hw, X(ST.xa1), ST.hw, .12), 1.36, y1 - 1.36, .03), MAT.grey));
+    const lids = [], rims = [], glass = [], L = .86, B = 1.2, H = .22, k = .72;
+    const x0 = ST.xa0 + (ST.xa1 - ST.xa0) / 4;
+    for (let i = 0; i < 3; i++) {
+      const xa = x0 + .5 + i * .96;
+      const lid = new THREE.CylinderGeometry(Math.SQRT1_2 * k, Math.SQRT1_2, H, 4, 1); lid.rotateY(Math.PI / 4); lid.scale(L, 1, B); lid.translate(X(xa), y1 + H / 2, 0);
+      lids.push(lid.toNonIndexed());
+      // two windows in each long sloping side
+      const ny = (B - B * k) / 2, n = new V3(0, ny, H).normalize();
+      for (const sd of [1, -1]) for (const dx of [-.2, .2]) {
+        const nn = new V3(0, n.y, sd * n.z), p = new V3(X(xa) + dx, y1 + H / 2, sd * (B * (1 + k) / 4)).addScaledVector(nn, .006);
+        const q = new THREE.Quaternion().setFromUnitVectors(new V3(0, 0, 1), nn);
+        const r = new THREE.TorusGeometry(.05, .012, 6, 16); r.applyMatrix4(M4.compose(p, q, new V3(1, 1, 1))); rims.push(r);
+        const c = new THREE.CircleGeometry(.048, 16); c.applyMatrix4(M4.compose(p.clone().addScaledVector(nn, -.003), q, new V3(1, 1, 1))); glass.push(c);
+      }
+      rims.push(tf(new THREE.TorusGeometry(.05, .012, 6, 14, Math.PI), [X(xa), y1 + H, 0], [0, Math.PI / 2, 0]));   // lifting handle
     }
-    g.add(mesh(mergeGeos(rims), MAT.brass), mesh(mergeGeos(lights), MAT.glass));
+    const lm = MAT.grey.clone(); lm.flatShading = true;
+    g.add(mesh(mergeGeos(lids), lm), mesh(mergeGeos(rims), MAT.brass), mesh(mergeGeos(glass), MAT.glass));
     add(root, 'skylight', g);
   }
 
@@ -426,15 +543,8 @@ export function createDrazki({ registry, M, t }) {
     g.position.set(X(xa), y0, w); g.rotation.y = facing;
     return g;
   }
-  {
-    const g = new THREE.Group();
-    for (const sd of [1, -1]) {
-      g.add(cowl(21.15, sd * 1.08, .2, 1.25, 0));      // stokehold: facing forward
-      g.add(cowl(16.6, sd * 1.12, .15, 1.0, 0));       // engine room
-    }
-    g.add(cowl(31.9, .55, .09, .55, Math.PI));          // crew quarters, facing aft
-    add(root, 'ventilators', g);
-  }
+  // One cowl, on the starboard side by the stokehold hatch, its mouth turned inboard (to port).
+  add(root, 'ventilators', cowl(21.55, 1.08, .24, 1.15, Math.PI / 2));
 
   /* =====================================================================
      MACHINERY: boilers, coal bunkers, engine, condenser, shaft, propeller, rudder
@@ -463,7 +573,7 @@ export function createDrazki({ registry, M, t }) {
   }
   {
     const g = group(boiler(17.3, 19.7, true), boiler(22.6, 25.0, false));
-    g.add(ladder(21.15, -.98, 1.4, .1));   // stokehold ladder
+    g.add(ladder(21.55, -.98, 1.4, .1));   // stokehold ladder, under the deck hatch
     add(root, 'boilers', g);
   }
   // Coal bunkers along both sides of the boiler rooms (11 t of coal when full).
@@ -587,10 +697,10 @@ export function createDrazki({ registry, M, t }) {
   }
   // Rudder: hung on the stern, behind the propeller (French torpedo-boat style).
   {
-    const sh = new THREE.Shape(); sh.moveTo(.22, .32); sh.lineTo(-.82, .32); sh.lineTo(-.86, -1.2); sh.quadraticCurveTo(-.84, -1.38, -.62, -1.4); sh.lineTo(.08, -1.4); sh.quadraticCurveTo(.24, -1.38, .24, -1.2); sh.closePath();
+    const sh = new THREE.Shape(); sh.moveTo(.22, .04); sh.lineTo(-.82, .04); sh.lineTo(-.86, -1.2); sh.quadraticCurveTo(-.84, -1.38, -.62, -1.4); sh.lineTo(.08, -1.4); sh.quadraticCurveTo(.24, -1.38, .24, -1.2); sh.closePath();
     const g = new THREE.ExtrudeGeometry(sh, { depth: .04, bevelEnabled: true, bevelThickness: .035, bevelSize: .03, bevelSegments: 3, curveSegments: 10 });
     g.translate(X(0), 0, -.02);
-    const rg = group(mesh(g, MAT.grey), mesh(cylGeo(new V3(X(.12), .25, 0), new V3(X(.12), 1.0, 0), .065, 14), MAT.grey));
+    const rg = group(mesh(g, MAT.grey), mesh(cylGeo(new V3(X(.12), -.02, 0), new V3(X(.12), 1.0, 0), .065, 14), MAT.grey));
     add(root, 'rudder', rg);
   }
 
@@ -641,10 +751,18 @@ export function createDrazki({ registry, M, t }) {
       // breech door with its locking wheel
       tg.add(mesh(tf(new THREE.CylinderGeometry(TUBE.r + .03, TUBE.r + .03, .08, 28), [x0 - .04, TUBE.y, z], [0, 0, Math.PI / 2]), MAT.grey));
       tg.add(mesh(tf(new THREE.TorusGeometry(.12, .015, 6, 20), [x0 - .12, TUBE.y, z], [0, Math.PI / 2, 0]), MAT.iron));
-      // muzzle "spoon": guides the torpedo as it leaves the tube
-      const sp = new THREE.CylinderGeometry(TUBE.r + .03, TUBE.r + .09, 1.0, 24, 1, true, -Math.PI / 2, Math.PI);
-      sp.rotateZ(-Math.PI / 2); sp.translate(x1 + .5, TUBE.y, z);
+      // muzzle "spoon" (tube à cuiller): the upper half of the tube runs on for about 2 m as a shell whose
+      // lower edges rise towards the tip, like a leaf; it guides the torpedo as it leaves (Bouclier drawing, CAD)
+      const SL = 2.0, sr = TUBE.r + .02, nu = 24, nv = 16, pos = [], idx = [], edgeL = [], edgeR = [];
+      for (let i = 0; i <= nu; i++) {
+        const u = i / nu, th = deg(95) - deg(75) * u * u, x = x1 + u * SL;
+        for (let j = 0; j <= nv; j++) { const ph = -th + 2 * th * j / nv; pos.push(x, TUBE.y + sr * Math.cos(ph), z + sr * Math.sin(ph)); }
+        edgeL.push(new V3(x, TUBE.y + sr * Math.cos(th), z - sr * Math.sin(th))); edgeR.push(new V3(x, TUBE.y + sr * Math.cos(th), z + sr * Math.sin(th)));
+      }
+      for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) { const p0 = i * (nv + 1) + j; idx.push(p0, p0 + nv + 1, p0 + 1, p0 + 1, p0 + nv + 1, p0 + nv + 2); }
+      const sp = new THREE.BufferGeometry(); sp.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); sp.setIndex(idx); sp.computeVertexNormals();
       const spm = MAT.greyLight.clone(); spm.side = THREE.DoubleSide; tg.add(mesh(sp, spm));
+      tg.add(tube(edgeL.concat(edgeR.reverse()), .012, MAT.grey, 80));   // stiffening bead round the edge
     }
     // training hand-wheel
     mount.add(mesh(tf(new THREE.TorusGeometry(.16, .02, 6, 20), [-.2, .85, -.8], [0, 0, 0]), MAT.iron));
@@ -659,6 +777,20 @@ export function createDrazki({ registry, M, t }) {
     g.add(mesh(tf(new THREE.CylinderGeometry(.3, .3, .1, 28), [X(32.55), y, 0], [0, 0, Math.PI / 2]), MAT.iron));   // breech
     g.add(mesh(tf(new THREE.TorusGeometry(.13, .016, 6, 20), [X(32.46), y, 0], [0, Math.PI / 2, 0]), MAT.brass));
     add(root, 'bowTube', g);
+  }
+  // Bow spar: a short pole over the bow tube, ending in a ball of chain (a fender for the bow).
+  {
+    const g = new THREE.Group(), a = new V3(X(36.7), TOP(36.7) + .1, 0), b = new V3(X(40.1), TOP(38) - .02, 0);
+    g.add(mesh(cylGeo(a, b, .065, 14, .05), MAT.grey));
+    for (const xa of [36.85, 37.6]) g.add(mesh(cylGeo(new V3(X(xa), deckY(xa, 0) - .03, 0), a.clone().lerp(b, (xa - 36.7) / 3.4), .045, 10), MAT.grey));   // crutches
+    const links = [], c = b.clone().add(new V3(.12, -.04, 0));
+    for (let i = 0; i < 46; i++) {
+      const d = new V3(rnd() - .5, rnd() - .5, rnd() - .5).normalize(), q = new THREE.Quaternion().setFromUnitVectors(new V3(0, 0, 1), d).multiply(new THREE.Quaternion().setFromAxisAngle(new V3(0, 0, 1), rnd() * Math.PI));
+      const lg = new THREE.TorusGeometry(.045, .014, 5, 10); lg.scale(1.5, 1, 1); lg.applyMatrix4(M4.compose(c.clone().addScaledVector(d, .14 + rnd() * .04), q, new V3(1, 1, 1))); links.push(lg);
+    }
+    links.push(tf(new THREE.SphereGeometry(.14, 14, 10), c.toArray()));
+    g.add(mesh(mergeGeos(links), MAT.iron));
+    add(root, 'bowSpar', g);
   }
   // Spare torpedoes on deck, ready to load.
   const spareTorps = [];
@@ -699,11 +831,53 @@ export function createDrazki({ registry, M, t }) {
     top.add(mesh(tf(new THREE.TorusGeometry(.08, .012, 6, 16), [-.15, -.05, -.22], [0, 0, 0]), MAT.iron));   // elevating wheel
     return g;
   }
+  // The boat's one 47 mm gun stands on a small sponson on the starboard side, between the funnels just
+  // forward of the cowl (museum ship). The rail and its net bulge out round the sponson, under the gun.
+  const SPON = { xa: 22.35, sd: 1, r: .55 };
+  { const e = edge(SPON.xa); SPON.y = e.h - .02; SPON.zc = e.w + .02; }
   {
-    const fg = gun47(); fg.position.set(X(24.45), CASE_TOP, 0); fg.rotation.y = -deg(55);
-    add(root, 'foreGun', fg);
-    const ag = gun47(); ag.position.set(X(2.35), deckY(2.35, 0) - .02, 0); ag.rotation.y = Math.PI + deg(40);
-    add(root, 'aftGun', ag);
+    const g = new THREE.Group(), z = SPON.sd * SPON.zc, xs = X(SPON.xa);
+    g.add(mesh(tf(new THREE.CylinderGeometry(SPON.r, SPON.r, .05, 40), [xs, SPON.y - .025, z]), MAT.grey));   // platform
+    const rim = []; for (let i = 0; i <= 20; i++) { const a = -Math.PI / 2 + Math.PI * i / 20; rim.push(new V3(xs + Math.sin(a) * SPON.r, SPON.y + .02, SPON.sd * (SPON.zc + Math.cos(a) * SPON.r))); }
+    g.add(tube(rim, .025, MAT.grey, 30));
+    for (const dx of [-.3, .3]) { const p = onHull(SPON.xa + dx, SPON.y - .55, SPON.sd).p; g.add(mesh(cylGeo(p, new V3(xs + dx, SPON.y - .05, z + SPON.sd * .35), .03, 8), MAT.grey)); }   // brackets
+    const fg = gun47(); fg.position.set(xs, SPON.y, z); fg.rotation.y = -deg(40) * SPON.sd;
+    g.add(fg);
+    add(root, 'foreGun', g);
+  }
+  // Aft steering position: a wheel on the stern deck. Its barrel winds two chains that run along the
+  // deck, over guide sheaves, to the quadrant on the rudder head: turn the wheel and the rudder turns.
+  {
+    const g = new THREE.Group(), xs = X(2.45), yd = deckY(2.45, 0) - .02, ya = yd + 1.0, yb = yd + .72;
+    const cast = [];
+    for (const sd of [1, -1]) for (const dx of [-.26, .26]) cast.push(cylGeo(new V3(xs + dx, yd, sd * .17), new V3(xs, ya - .08, sd * .1), .035, 8));
+    cast.push(tf(new THREE.BoxGeometry(.24, .26, .3), [xs, ya, 0]), tf(new THREE.BoxGeometry(.7, .04, .42), [xs, yd + .02, 0]));
+    cast.push(cylGeo(new V3(xs, yb, -.2), new V3(xs, yb, .2), .09, 18));                                          // chain barrel
+    cast.push(cylGeo(new V3(xs - .1, ya, 0), new V3(xs - .3, ya, 0), .03, 10));                                    // axle
+    g.add(mesh(mergeGeos(cast), MAT.grey));
+    const w = new THREE.Group(); w.position.set(xs - .3, ya, 0); w.rotation.y = Math.PI / 2;
+    const sp = []; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; sp.push(cylGeo(new V3(0, 0, 0), new V3(Math.cos(a) * .52, Math.sin(a) * .52, 0), .018, 6)); }
+    w.add(mesh(new THREE.TorusGeometry(.42, .026, 8, 40), MAT.wood), mesh(mergeGeos(sp), MAT.wood), mesh(tf(new THREE.CylinderGeometry(.07, .07, .1, 16), [0, 0, 0], [Math.PI / 2, 0, 0]), MAT.brass));
+    g.add(w);
+    // rudder quadrant on the rudder head, pointing forward
+    const xq = X(.12), yq = deckY(.3, 0) + .05, R = .5, qa = deg(45), quad = [];
+    quad.push(tf(new THREE.CylinderGeometry(.08, .08, .1, 16), [xq, yq, 0]));
+    for (const sd of [1, -1]) quad.push(cylGeo(new V3(xq, yq, 0), new V3(xq + R * Math.cos(qa), yq, sd * R * Math.sin(qa)), .025, 8));
+    const arc = []; for (let i = 0; i <= 12; i++) { const a = -qa + 2 * qa * i / 12; arc.push(new V3(xq + R * Math.cos(a), yq, R * Math.sin(a))); }
+    g.add(mesh(mergeGeos(quad), MAT.iron), tube(arc, .03, MAT.iron, 24));
+    // chains and sheaves
+    const chain = [], sheaves = [];
+    for (const sd of [1, -1]) {
+      const p0 = new V3(xs, yb - .09, sd * .16), p1 = new V3(xs - .02, yd + .1, sd * .2), p2 = new V3(X(1.25), deckY(1.25, .42) + .08, sd * .42);
+      const p3 = new V3(xq + R * Math.cos(qa) + .02, yq, sd * (R * Math.sin(qa) + .02));
+      chain.push(chainLinks([p0, p1, p1.clone().lerp(p2, .5).add(new V3(0, -.03, 0)), p2, p3], .02));
+      for (const p of [p1, p2]) sheaves.push(tf(new THREE.CylinderGeometry(.065, .065, .05, 14), [p.x, p.y - .02, p.z]), tf(new THREE.BoxGeometry(.16, .04, .1), [p.x, p.y - .07, p.z]));
+    }
+    g.add(mesh(mergeGeos(chain), MAT.iron), mesh(mergeGeos(sheaves), MAT.dark));
+    // bell-shaped pedestal to port of the wheel (museum ship, CAD): its use is not known
+    const bell = new THREE.LatheGeometry([[0, 0], [.2, 0], [.2, .04], [.11, .14], [.1, .24], [.16, .42], [.17, .52], [.12, .72], [.08, .8], [.1, .86], [.2, .9], [.21, .96], [0, .97]].map(([r, h]) => new THREE.Vector2(r, h)), 28);
+    g.add(mesh(tf(bell, [X(2.3), deckY(2.3, .6) - .02, -.6]), MAT.grey));
+    add(root, 'aftWheel', g);
   }
   // Magazine below the conning tower: racks of 47 mm cartridges.
   {
@@ -722,51 +896,106 @@ export function createDrazki({ registry, M, t }) {
   /* =====================================================================
      COMMAND AND NAVIGATION
      ===================================================================== */
-  const CT = { xa0: 26.0, xc: 26.9, r: .85, t: .05, y0: 1.42, y1: 3.25, door: .32 };
+  // Conning tower: a rounded box whose walls lean in a little, open at the back (door), with a low hood
+  // in front over the steering gear and three squared-oval windows with wipers (CAD reconstruction,
+  // Draganov 2025; museum ship).
+  const CT = { xa0: 26.0, xa1: 27.55, hw: .8, rc: .26, t: .05, y0: 1.42, y1: 3.25, door: .32, lean: [.04, .05] };
+  CT.xc = (CT.xa0 + CT.xa1) / 2;
+  const ctScale = y => { const f = clamp((y - CT.y0) / (CT.y1 - CT.y0), 0, 1); return [1 - CT.lean[0] * f, 1 - CT.lean[1] * f]; };
   {
-    const g = new THREE.Group(), x0 = X(CT.xa0), xc = X(CT.xc), r = CT.r, ri = r - CT.t;
+    const g = new THREE.Group(), x0 = X(CT.xa0), x1 = X(CT.xa1), xc = X(CT.xc);
+    // plan outline (x along, y = −z) from one door post round the front to the other
+    const outline = inset => {
+      const a = x0 + inset, b = x1 - inset, h = CT.hw - inset, r = CT.rc - inset * .5, pts = [];
+      const arc = (cx, cy, t0) => { for (let i = 0; i <= 8; i++) { const t = t0 + i / 8 * Math.PI / 2; pts.push([cx + r * Math.cos(t), cy + r * Math.sin(t)]); } };
+      pts.push([a, -CT.door]); arc(a + r, -h + r, Math.PI); arc(b - r, -h + r, Math.PI * 1.5); arc(b - r, h - r, 0); arc(a + r, h - r, Math.PI / 2); pts.push([a, CT.door]);
+      return pts;
+    };
     const wall = new THREE.Shape();
-    wall.moveTo(x0, -CT.door); wall.lineTo(x0, -r); wall.lineTo(xc, -r); wall.absarc(xc, 0, r, -Math.PI / 2, Math.PI / 2, false); wall.lineTo(x0, r); wall.lineTo(x0, CT.door);
-    wall.lineTo(x0 + CT.t, CT.door); wall.lineTo(x0 + CT.t, ri); wall.lineTo(xc, ri); wall.absarc(xc, 0, ri, Math.PI / 2, -Math.PI / 2, true); wall.lineTo(x0 + CT.t, -ri); wall.lineTo(x0 + CT.t, -CT.door); wall.closePath();
-    g.add(mesh(extrudeUp(wall, CT.y0, CT.y1 - CT.y0), MAT.grey));
-    const roof = new THREE.Shape(); roof.moveTo(x0 - .03, -r - .03); roof.lineTo(xc, -r - .03); roof.absarc(xc, 0, r + .03, -Math.PI / 2, Math.PI / 2, false); roof.lineTo(x0 - .03, r + .03); roof.closePath();
-    g.add(mesh(extrudeUp(roof, CT.y1, .07, .02), MAT.grey));
-    g.add(mesh(extrudeUp(rrShape(x0 + .05, -r + .05, xc + .6, r - .05, .3), CT.y0, .05), MAT.wood));   // floor gratings
-    // round viewing ports around the front
-    const rims = [], glass = [];
-    for (let i = -3; i <= 3; i++) {
-      const a = i * deg(26), p = new V3(xc + Math.cos(a) * (r + .005), 2.9, Math.sin(a) * (r + .005)), n = new V3(Math.cos(a), 0, Math.sin(a));
-      const q = new THREE.Quaternion().setFromUnitVectors(new V3(0, 0, 1), n);
-      const rg = new THREE.TorusGeometry(.085, .02, 6, 16); rg.applyMatrix4(M4.compose(p, q, new V3(1, 1, 1))); rims.push(rg);
-      const gl = new THREE.CircleGeometry(.08, 16); gl.applyMatrix4(M4.compose(p.clone().addScaledVector(n, -.01), q, new V3(1, 1, 1))); glass.push(gl);
+    outline(0).concat(outline(CT.t).reverse()).forEach(([x, y], k) => (k ? wall.lineTo(x, y) : wall.moveTo(x, y))); wall.closePath();
+    const wg = extrudeUp(wall, CT.y0, CT.y1 - CT.y0), p = wg.attributes.position;
+    for (let k = 0; k < p.count; k++) { const [sx, sz] = ctScale(p.getY(k)); p.setX(k, xc + (p.getX(k) - xc) * sx); p.setZ(k, p.getZ(k) * sz); }
+    wg.computeVertexNormals();
+    const wm = MAT.grey.clone(); wm.side = THREE.DoubleSide;   // seen from inside through the door too
+    g.add(mesh(wg, wm));
+    const [tx, tz] = ctScale(CT.y1), L2 = (CT.xa1 - CT.xa0) / 2 * tx + .03, W2 = CT.hw * tz + .03;
+    g.add(mesh(extrudeUp(rrShape(xc - L2, -W2, xc + L2, W2, CT.rc), CT.y1, .08, .03), MAT.grey));                    // roof
+    g.add(mesh(extrudeUp(rrShape(x0 + .05, -CT.hw + .06, x1 - .05, CT.hw - .06, .2), CT.y0, .05), std('#9b2c22', { roughness: .7 })));   // floor, painted red
+    // Hood in front: a block with a vertical face and a rounded top edge over the steering gear, with a
+    // small inspection hatch (V-shaped straps) in its face (CAD reconstruction, Draganov 2025).
+    {
+      const HD = { L: .6, top: 2.62, hw: .45, bv: .05 }, p = new THREE.Shape(), r = .2, e = HD.bv;
+      p.moveTo(x1 + e, 1.95); p.lineTo(x1 + HD.L - e, 1.95); p.lineTo(x1 + HD.L - e, HD.top - e - r);
+      p.quadraticCurveTo(x1 + HD.L - e, HD.top - e, x1 + HD.L - e - r, HD.top - e); p.lineTo(x1 + e, HD.top - e + .02); p.closePath();
+      const hg = new THREE.ExtrudeGeometry(p, { depth: 2 * (HD.hw - e), bevelEnabled: true, bevelThickness: e, bevelSize: e, bevelSegments: 3, curveSegments: 12 });
+      hg.translate(0, 0, -(HD.hw - e));
+      g.add(mesh(hg, MAT.grey));
+      g.add(mesh(extrudeUp(rrShape(x1, -HD.hw - .03, x1 + HD.L + .03, HD.hw + .03, .08), PY - .01, .03), MAT.grey));   // foot flange
+      const xh = x1 + HD.L + .002, yh = 2.27, hatch = [], fr = new THREE.Shape();
+      roundRect(-.17, -.13, .17, .13, .05, .05, .05, .05, fr); fr.holes.push(roundRect(-.14, -.1, .14, .1, .03, .03, .03, .03, new THREE.Path()));
+      const frame = new THREE.ExtrudeGeometry(fr, { depth: .02, bevelEnabled: false }); frame.rotateY(Math.PI / 2); frame.translate(xh, yh, 0); hatch.push(frame);
+      hatch.push(tf(new THREE.BoxGeometry(.012, .2, .28), [xh + .006, yh, 0]));
+      for (const sd of [1, -1]) {
+        hatch.push(cylGeo(new V3(xh + .02, yh + .08, sd * .11), new V3(xh + .02, yh - .08, sd * .015), .012, 6));   // V straps
+        hatch.push(tf(new THREE.BoxGeometry(.03, .04, .05), [xh + .02, yh + .09, sd * .11]));                        // hinges
+      }
+      g.add(mesh(mergeGeos(hatch), MAT.greyLight));
     }
-    g.add(mesh(mergeGeos(rims), MAT.brass), mesh(mergeGeos(glass), MAT.glass));
-    // roof rail
-    const rail = [], top = CT.y1 + .07;
-    for (let i = 0; i <= 8; i++) { const a = -Math.PI / 2 + i * Math.PI / 8, p = new V3(xc + Math.cos(a) * (r - .04), top, Math.sin(a) * (r - .04)); rail.push(cylGeo(p, p.clone().add(new V3(0, .55, 0)), .018, 6)); }
-    const railPts = []; for (let i = 0; i <= 24; i++) { const a = -Math.PI / 2 + i * Math.PI / 24; railPts.push(new V3(xc + Math.cos(a) * (r - .04), top + .55, Math.sin(a) * (r - .04))); }
-    g.add(mesh(mergeGeos(rail), MAT.steel), tube(railPts, .02, MAT.steel, 30));
+    // Fan-shaped windows in brass frames (wide, arched top; narrow bottom): three in the front, one in each
+    // side wall near the front. A wiper outside and a hinged armour flap inside, swung up (museum ship).
+    const fan = (a, b, s = new THREE.Shape()) => {
+      s.moveTo(-a, .55 * b); s.quadraticCurveTo(0, 1.3 * b, a, .55 * b); s.lineTo(.62 * a, -.8 * b); s.lineTo(.42 * a, -b); s.lineTo(-.42 * a, -b); s.lineTo(-.62 * a, -.8 * b); s.closePath();
+      return s;
+    };
+    const yw = 2.9, [wx, wz] = ctScale(yw), rims = [], glass = [], glassIn = [], wipers = [], a = .17, b = .11, UPV = new V3(0, 1, 0);
+    const ringGeo = () => { const s = fan(a + .035, b + .035); s.holes.push(fan(a, b)); return new THREE.ExtrudeGeometry(s, { depth: .03, bevelEnabled: false }); };
+    const flapGeo = new THREE.ExtrudeGeometry(fan(a + .03, b + .03), { depth: .015, bevelEnabled: false }); flapGeo.translate(0, -1.01 * (b + .03), 0);
+    // p: centre on the outer wall surface, n: outward normal (horizontal), tilt: which way the wiper hangs
+    const win = (p, n, tilt) => {
+      const t = UPV.clone().cross(n), basis = new THREE.Matrix4().makeBasis(t, UPV, n);
+      const put = (geo, d) => geo.applyMatrix4(basis.clone().setPosition(p.clone().addScaledVector(n, d)));
+      rims.push(put(ringGeo(), 0), put(ringGeo(), -CT.t - .03));
+      glass.push(put(new THREE.ShapeGeometry(fan(a, b)), .008)); glassIn.push(put(new THREE.ShapeGeometry(fan(a, b)), -CT.t - .004));
+      const piv = p.clone().addScaledVector(n, .03).addScaledVector(UPV, b - .005);
+      wipers.push(cylGeo(piv, piv.clone().addScaledVector(UPV, -.147).addScaledVector(t, tilt * .085), .008, 6));
+      wipers.push(cylGeo(piv.clone().addScaledVector(n, -.01), piv.clone().addScaledVector(n, .01), .016, 10));
+      const flap = new THREE.Group(); flap.position.copy(p).addScaledVector(n, -CT.t - .03).addScaledVector(UPV, b + .03); flap.quaternion.setFromRotationMatrix(basis);
+      const fm = mesh(flapGeo, MAT.grey); fm.rotation.x = deg(110); flap.add(fm); g.add(flap);
+    };
+    const xf = xc + (x1 - xc) * wx, xs = xc + (X(27.05) - xc) * wx;
+    for (const zz of [-.37, 0, .37]) win(new V3(xf, yw, zz * wz), new V3(1, 0, 0), zz > 0 ? -1 : 1);
+    for (const sd of [1, -1]) win(new V3(xs, yw, sd * CT.hw * wz), new V3(0, 0, sd), 1);
+    const gi = MAT.glass.clone(); gi.side = THREE.BackSide;
+    g.add(mesh(mergeGeos(rims), MAT.brass), mesh(mergeGeos(glass), MAT.glass), mesh(mergeGeos(glassIn), gi), mesh(mergeGeos(wipers), MAT.black));
     add(root, 'conningTower', g);
   }
-  // Steering wheel inside the conning tower, seen through the open back door.
+  // Main steering wheel on the front wall of the conning tower; its shaft goes through the wall to the
+  // steering gear under the hood.
   {
-    const g = new THREE.Group(), x = X(26.55), y = 2.3;
-    g.add(mesh(tf(new THREE.BoxGeometry(.18, .9, .26), [x + .08, y - .45, 0]), MAT.wood));
-    const w = new THREE.Group(); w.position.set(x - .04, y, 0); w.rotation.y = Math.PI / 2;
-    w.add(mesh(new THREE.TorusGeometry(.36, .028, 8, 36), MAT.wood));
+    const g = new THREE.Group(), y = 2.35, xw = X(CT.xc) + (CT.xa1 - CT.xc) * ctScale(y)[0] - CT.t;
+    g.add(mesh(cylGeo(new V3(xw + .01, y, 0), new V3(xw - .24, y, 0), .035, 12), MAT.steel));
+    g.add(mesh(tf(new THREE.CylinderGeometry(.1, .12, .06, 18), [xw - .02, y, 0], [0, 0, Math.PI / 2]), MAT.iron));   // bearing on the wall
+    const w = new THREE.Group(); w.position.set(xw - .24, y, 0); w.rotation.y = Math.PI / 2;
+    w.add(mesh(new THREE.TorusGeometry(.4, .024, 8, 40), MAT.iron));
     w.add(mesh(tf(new THREE.CylinderGeometry(.07, .07, .1, 16), [0, 0, 0], [Math.PI / 2, 0, 0]), MAT.brass));
-    const sp = []; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; sp.push(cylGeo(new V3(0, 0, 0), new V3(Math.cos(a) * .48, Math.sin(a) * .48, 0), .02, 6)); }
-    w.add(mesh(mergeGeos(sp), MAT.wood));
+    const sp = [], grips = [];
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 + Math.PI / 8; sp.push(cylGeo(new V3(0, 0, 0), new V3(Math.cos(a) * .42, Math.sin(a) * .42, 0), .016, 6)); grips.push(cylGeo(new V3(Math.cos(a) * .42, Math.sin(a) * .42, 0), new V3(Math.cos(a) * .54, Math.sin(a) * .54, 0), .022, 8)); }
+    w.add(mesh(mergeGeos(sp), MAT.iron), mesh(mergeGeos(grips), MAT.dark));
     g.add(w);
     add(root, 'wheel', g);
   }
-  // Compass in its binnacle on the conning-tower roof; the iron balls correct for the ship's own steel.
+  // Compass in its binnacle on the conning-tower floor, aft of the wheel, under the helmsman's eyes;
+  // the two iron balls and the brass bars correct for the ship's own steel.
   {
-    const g = new THREE.Group(), x = X(26.75), y = CT.y1 + .07;
-    g.add(mesh(new THREE.LatheGeometry([[0, 0], [.17, 0], [.13, .08], [.11, .7], [.17, .78], [.17, .9], [0, .9]].map(([a, b]) => new THREE.Vector2(a, b)), 24), MAT.wood));
-    g.add(mesh(tf(new THREE.SphereGeometry(.17, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), [0, .9, 0]), MAT.brass));
-    g.add(mesh(tf(new THREE.CylinderGeometry(.05, .05, .1, 12), [0, 1.08, 0]), MAT.brass));
-    for (const sd of [1, -1]) { g.add(mesh(tf(new THREE.SphereGeometry(.085, 16, 10), [0, .83, sd * .32]), sd > 0 ? MAT.lampGreen : MAT.lampRed)); g.add(mesh(cylGeo(new V3(0, .8, sd * .14), new V3(0, .8, sd * .25), .02, 6), MAT.brass)); }
+    const g = new THREE.Group(), x = X(26.62), y = CT.y0 + .05, top = .82;
+    g.add(mesh(new THREE.LatheGeometry([[0, 0], [.2, 0], [.2, .05], [.12, .12], [.1, .6], [.15, .66], [.15, top - .1], [0, top - .1]].map(([a, b]) => new THREE.Vector2(a, b)), 24), MAT.dark));
+    g.add(mesh(new THREE.LatheGeometry([[0, top - .1], [.18, top - .1], [.2, top], [.18, top + .14], [.1, top + .2], [0, top + .2]].map(([a, b]) => new THREE.Vector2(a, b)), 24), MAT.brass));   // bowl and hood
+    g.add(mesh(tf(new THREE.CircleGeometry(.1, 24), [-.1, top + .1, 0], [0, -Math.PI / 2 - deg(20), 0]), MAT.white));   // card, seen through the hood window
+    for (const sd of [1, -1]) {
+      g.add(mesh(tf(new THREE.SphereGeometry(.085, 16, 10), [0, top - .02, sd * .32]), MAT.black));
+      g.add(mesh(cylGeo(new V3(0, top - .06, sd * .15), new V3(0, top - .06, sd * .26), .022, 6), MAT.dark));
+      g.add(mesh(tf(new THREE.CylinderGeometry(.04, .04, .16, 14), [0, top + .15, sd * .17]), MAT.brass));   // Flinders bars
+    }
     g.position.set(x, y, 0);
     add(root, 'compass', g);
   }
@@ -823,21 +1052,11 @@ export function createDrazki({ registry, M, t }) {
     g.add(mesh(mergeGeos(lines), MAT.dark));
     add(root, 'mast', g);
   }
-  // Searchlight on the conning-tower roof: at night it finds a target, or signals in Morse code.
-  {
-    const g = new THREE.Group(); g.position.set(X(29.35), deckY(29.35, 0) - .03, 0);
-    g.add(mesh(tf(new THREE.CylinderGeometry(.12, .2, .32, 16), [0, .16, 0]), MAT.grey));
-    for (const sd of [1, -1]) g.add(mesh(tf(new THREE.BoxGeometry(.05, .35, .04), [0, .48, sd * .26]), MAT.grey));
-    g.add(mesh(cylGeo(new V3(-.22, .6, 0), new V3(.2, .6, 0), .23, 24), MAT.grey));
-    g.add(mesh(tf(new THREE.CircleGeometry(.21, 24), [.205, .6, 0], [0, Math.PI / 2, 0]), new THREE.MeshPhysicalMaterial({ color: '#dfe9ee', emissive: '#bcd6e8', emissiveIntensity: .25, roughness: .05, clearcoat: 1 })));
-    g.add(mesh(tf(new THREE.CylinderGeometry(.08, .1, .12, 12), [-.1, .88, 0]), MAT.grey));
-    add(root, 'searchlight', g);
-  }
   // Navigation lights: red on the left (port) side, green on the right (starboard), white on the mast.
   {
     const g = new THREE.Group();
     for (const sd of [1, -1]) {
-      const z = sd * (CT.r + .1), x = X(26.5), y = 2.95;
+      const z = sd * (CT.hw + .08), x = X(26.5), y = 2.95;
       g.add(mesh(tf(new THREE.BoxGeometry(.18, .24, .16), [x, y, z]), MAT.dark));
       g.add(mesh(tf(new THREE.CylinderGeometry(.065, .065, .16, 14), [x + .06, y, z]), sd > 0 ? MAT.lampGreen : MAT.lampRed));
     }
@@ -877,22 +1096,12 @@ export function createDrazki({ registry, M, t }) {
       parts.push(tf(new THREE.TorusGeometry(.09, .022, 6, 14), [.7, 0, 0], [Math.PI / 2, 0, 0]));            // ring
       a.add(mesh(mergeGeos(parts), MAT.black)); return a;
     };
-    const links = (pts, r = .045) => {
-      const curve = new THREE.CatmullRomCurve3(pts), L = curve.getLength(), n = Math.floor(L / (r * 2.6)), gs = [];
-      for (let i = 0; i < n; i++) {
-        const u = i / n, p = curve.getPointAt(u), tn = curve.getTangentAt(u);
-        const lg = new THREE.TorusGeometry(r, r * .3, 5, 10); lg.scale(1.5, 1, 1);
-        const q = new THREE.Quaternion().setFromUnitVectors(new V3(1, 0, 0), tn).multiply(new THREE.Quaternion().setFromAxisAngle(new V3(1, 0, 0), i % 2 ? Math.PI / 2 : 0));
-        lg.applyMatrix4(M4.compose(p, q, new V3(1, 1, 1))); gs.push(lg);
-      }
-      return mergeGeos(gs);
-    };
     const chain = [];
     for (const sd of [1, -1]) {
       const xa = 32.85, w = .82, y = deckY(xa, w), slope = (deckY(xa, w + .05) - deckY(xa, w - .05)) / .1;
       const an = anchor(); an.position.set(X(xa), y + .07, sd * w); an.rotation.x = -sd * Math.atan(slope); g.add(an);
       const p0 = new V3(X(xa + .72), y + .08, sd * w), p1 = new V3(X(34.2), deckY(34.2, .5) + .05, sd * .5), p2 = new V3(X(34.62), deckY(34.62, .3) + .32, sd * .3), p3 = new V3(X(35.0), deckY(35.0, .3) + .1, sd * .3), p4 = new V3(X(35.15), deckY(35.15, .3) - .1, sd * .3);
-      chain.push(links([p0, p1, p2, p3, p4]));
+      chain.push(chainLinks([p0, p1, p2, p3, p4]));
     }
     g.add(mesh(mergeGeos(chain), MAT.iron));
     add(root, 'anchors', g);
@@ -906,9 +1115,9 @@ export function createDrazki({ registry, M, t }) {
     const tip = pts[4];
     g.add(mesh(cylGeo(tip, tip.clone().add(new V3(0, -.5, 0)), .008, 6), MAT.dark));
     g.add(mesh(tf(new THREE.TorusGeometry(.05, .012, 6, 12, Math.PI * 1.4), [tip.x, tip.y - .55, tip.z], [0, 0, Math.PI * .8]), MAT.iron));
-    const js = new V3(X(37.85), TOP(37.85) - .02, 0);
+    const js = new V3(X(37.2), deckY(37.2, .16) - .02, .16);   // jackstaff beside the bow spar
     g.add(mesh(cylGeo(js, js.clone().add(new V3(0, 1.35, 0)), .03, 8, .02), MAT.wood));
-    g.add(mesh(tf(new THREE.SphereGeometry(.04, 10, 6), [js.x, js.y + 1.37, 0]), MAT.brass));
+    g.add(mesh(tf(new THREE.SphereGeometry(.04, 10, 6), [js.x, js.y + 1.37, js.z]), MAT.brass));
     add(root, 'anchors', g);
   }
   // Windlass: turn the handles (or a small steam engine) and the gypsy wheels haul in the chain.
@@ -935,34 +1144,65 @@ export function createDrazki({ registry, M, t }) {
     }
     add(root, 'bollards', mesh(mergeGeos(gs), MAT.dark));
   }
-  // Guard rails and the nets along the main deck (they keep people and gear from going overboard).
+  // Guard rails: iron stanchions bolted to the hull side just below the deck edge carry two thick ropes.
+  // Along the middle of the ship a fishing-type net hangs from the top rope to the hull.
+  // Stanchion z at xa: just outboard of the hull below the deck edge.
+  const railZ = xa => { const e = edge(xa); return { yb: e.h - .16, w: hb(xa, e.h - .16) + .035, e }; };
   {
-    const g = new THREE.Group(), stan = [], netTex = canvasTex(256, 256, (c, W) => {
-      c.clearRect(0, 0, W, W); c.strokeStyle = 'rgba(214,206,186,1)'; c.lineWidth = 5;
-      for (let i = -W; i < 2 * W; i += 32) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i + W, W); c.stroke(); c.beginPath(); c.moveTo(i, W); c.lineTo(i + W, 0); c.stroke(); }
+    const g = new THREE.Group(), stan = [], feet = [];
+    const ropeTex = canvasTex(64, 16, (c, W, H) => {
+      c.fillStyle = '#c2b089'; c.fillRect(0, 0, W, H); c.strokeStyle = '#86734e'; c.lineWidth = 4;
+      for (let i = -2; i < 6; i++) { c.beginPath(); c.moveTo(i * W / 4, 0); c.lineTo(i * W / 4 + W / 2, H); c.stroke(); }
     });
-    netTex.wrapS = netTex.wrapT = THREE.RepeatWrapping;
+    ropeTex.wrapS = ropeTex.wrapT = THREE.RepeatWrapping;
+    const ropeMat = new THREE.MeshStandardMaterial({ map: ropeTex, roughness: .95 });
+    const netTex = canvasTex(256, 256, (c, W) => {
+      c.clearRect(0, 0, W, W); c.strokeStyle = '#d2c9b0'; c.lineWidth = 2.5;
+      const s = W / 8;
+      for (let i = -8; i <= 16; i++) { c.beginPath(); c.moveTo(i * s, 0); c.lineTo(i * s + W, W); c.stroke(); c.beginPath(); c.moveTo(i * s, W); c.lineTo(i * s + W, 0); c.stroke(); }
+    });
+    netTex.wrapS = netTex.wrapT = THREE.RepeatWrapping; netTex.anisotropy = 8;
+    const netMat = new THREE.MeshStandardMaterial({ map: netTex, transparent: true, depthWrite: false, side: THREE.DoubleSide, roughness: 1 });
+    const sag = (pts, d) => { const out = []; pts.forEach((p, i) => { if (i) out.push(p.clone().lerp(pts[i - 1], .5).add(new V3(0, -d, 0))); out.push(p); }); return out; };
     for (const sd of [1, -1]) {
-      const tops = [], mids = [], net = { pos: [], uv: [], idx: [] };
+      const tops = [], mids = [], net = { pos: [], uv: [], idx: [] }; let wingDone = false;
       const xs = []; for (let xa = .7; xa < 37.3; xa += 1.25) xs.push(xa);
       for (const xa of xs) {
-        const e = edge(xa), w = e.w - .05, y = deckY(xa, w);
-        if (w < .2) continue;
-        const b = new V3(X(xa), y - .02, sd * w), tp = b.clone().add(new V3(0, .9, sd * .03));
-        stan.push(cylGeo(b, tp, .022, 6)); tops.push(tp); mids.push(b.clone().add(new V3(0, .47, sd * .015)));
+        const { yb, w, e } = railZ(xa);
+        if (e.w < .25) continue;
+        if (xa > WING.xa0 && xa < WING.xa1 + .35) {   // posts along the outer edge of the bridge wing
+          if (wingDone) continue; wingDone = true;
+          for (const x of [26.05, 26.95, 27.85, 28.75, 29.55]) {
+            const z = sd * (wingOut(x) - .03), tp = new V3(X(x), PY + .92, z);
+            stan.push(cylGeo(new V3(X(x), PY - .03, z), tp, .022, 8)); tops.push(tp.clone().add(new V3(0, -.04, 0))); mids.push(new V3(X(x), PY + .47, z));
+          }
+          continue;
+        }
+        if (sd === SPON.sd && Math.abs(xa - SPON.xa) < SPON.r + .2) {   // round the gun sponson
+          for (const f of [-70, -25, 25, 70]) {
+            const a = deg(f), R = SPON.r - .04, x = SPON.xa + Math.sin(a) * R, z = sd * (SPON.zc + Math.cos(a) * R);
+            const tp = new V3(X(x), SPON.y + .92, z);
+            stan.push(cylGeo(new V3(X(x), SPON.y, z), tp, .022, 8)); tops.push(tp.clone().add(new V3(0, -.04, 0))); mids.push(new V3(X(x), SPON.y + .47, z));
+            const k = net.pos.length / 3; net.pos.push(X(x), SPON.y + .01, z, X(x), tp.y - .05, z); net.uv.push(x / .8, 0, x / .8, (tp.y - .06 - SPON.y) / .8);
+            if (k) net.idx.push(k - 2, k, k - 1, k - 1, k, k + 1);
+          }
+          continue;
+        }
+        const b = new V3(X(xa), yb, sd * w), tp = new V3(X(xa), e.h + .92, sd * w);
+        stan.push(cylGeo(b, tp, .022, 8));
+        feet.push(tf(new THREE.BoxGeometry(.09, .16, .04), [X(xa), yb + .06, sd * (w - .03)]), tf(new THREE.BoxGeometry(.09, .05, .05), [X(xa), e.h - .02, sd * (w - .02)]));
+        tops.push(tp.clone().add(new V3(0, -.04, 0))); mids.push(new V3(X(xa), e.h + .47, sd * w));
+        if (xa > 8.4 && xa < 25.6) {
+          const k = net.pos.length / 3, y0 = e.h - .03, h = tp.y - .05 - y0;
+          net.pos.push(X(xa), y0, sd * (e.w + .01), X(xa), tp.y - .05, sd * w); net.uv.push(xa / .8, 0, xa / .8, h / .8);
+          if (k) net.idx.push(k - 2, k, k - 1, k - 1, k, k + 1);
+        }
       }
-      g.add(tube(tops, .012, MAT.steel, 200), tube(mids, .01, MAT.steel, 200));
-      // net between xa 8.5 and 25.5
-      for (const xa of xs.filter(x => x > 8.4 && x < 25.6)) {
-        const e = edge(xa), w = e.w - .05, y = deckY(xa, w), k = net.pos.length / 3;
-        net.pos.push(X(xa), y, sd * w, X(xa), y + .88, sd * (w + .03)); net.uv.push(xa / 1.25, 0, xa / 1.25, 3.4);
-        if (k) net.idx.push(k - 2, k, k - 1, k - 1, k, k + 1);
-      }
+      g.add(tube(sag(tops, .045), .021, ropeMat, tops.length * 8), tube(sag(mids, .04), .019, ropeMat, mids.length * 8));
       const ng = new THREE.BufferGeometry(); ng.setAttribute('position', new THREE.Float32BufferAttribute(net.pos, 3)); ng.setAttribute('uv', new THREE.Float32BufferAttribute(net.uv, 2)); ng.setIndex(net.idx); ng.computeVertexNormals();
-      netTex.repeat.set(1, 1);
-      g.add(mesh(ng, new THREE.MeshStandardMaterial({ map: netTex, alphaTest: .5, transparent: false, side: THREE.DoubleSide, roughness: 1 })));
+      const nm = mesh(ng, netMat); nm.renderOrder = 3; g.add(nm);
     }
-    g.add(mesh(mergeGeos(stan), MAT.steel));
+    g.add(mesh(mergeGeos(stan), MAT.steel), mesh(mergeGeos(feet), MAT.grey));
     add(root, 'rails', g, { shadow: false });
   }
   // Hatches: the way down to the crew's quarters, the officers' cabin and the engine room.
@@ -974,11 +1214,26 @@ export function createDrazki({ registry, M, t }) {
       lids.push(extrudeUp(rrShape(X(xa) - lx / 2 - .04, -lz / 2 - .04, X(xa) + lx / 2 + .04, lz / 2 + .04, .08), y + h, .05));
     };
     hatch(30.4, .8, .7, .3); hatch(9.2, .6, .6, .3);
-    // officers' companion: a little hood with a sliding top
-    const y = deckY(7.15, 0) - .05;
-    gs.push(extrudeUp(rrShape(X(6.7), -.42, X(7.6), .42, .08), y, .55));
-    lids.push(extrudeUp(rrShape(X(6.65), -.47, X(7.65), .47, .1), y + .55, .08, .03));
-    add(root, 'hatches', group(mesh(mergeGeos(gs), MAT.grey), mesh(mergeGeos(lids), MAT.greyLight)));
+    // officers' companion just aft of the twin tube: a wedge in side view (CAD reconstruction) – vertical
+    // forward face, short rounded top, and a steep sloping aft face that carries two doors opening aft
+    const y = deckY(7.15, .46) - .04, hw = .46, H = 1.05, xb = 6.85, xt = 7.3, xf = 7.6, bv = .025, prof = new THREE.Shape();
+    prof.moveTo(X(xb), 0); prof.lineTo(X(xf), 0); prof.lineTo(X(xf), H - .12); prof.quadraticCurveTo(X(xf), H, X(xf) - .12, H);
+    prof.lineTo(X(xt) + .06, H); prof.quadraticCurveTo(X(xt), H, X(xt) - .03, H - .07); prof.closePath();
+    const cg = new THREE.ExtrudeGeometry(prof, { depth: 2 * (hw - bv), bevelEnabled: true, bevelThickness: bv, bevelSize: bv, bevelSegments: 2, curveSegments: 10 });
+    cg.translate(0, y, -(hw - bv)); gs.push(cg);
+    // the sloping face: from P0 at the deck to P1 under the top
+    const P0 = new V3(X(xb), y, 0), P1 = new V3(X(xt) - .03, y + H - .07, 0), d = P1.clone().sub(P0), SL = d.length(); d.normalize();
+    const n = new V3(-d.y, d.x, 0), phi = Math.atan2(d.y, d.x) - Math.PI / 2, doors = [], fit = [];
+    const on = (t, out) => P0.clone().addScaledVector(d, t).addScaledVector(n, out + bv);
+    for (const sd of [1, -1]) {
+      const c = on(SL * .5, .012), c2 = on(SL * .5, .026);
+      doors.push(tf(new THREE.BoxGeometry(.025, SL * .8, .37), [c.x, c.y, sd * .2], [0, 0, phi]));
+      doors.push(tf(new THREE.BoxGeometry(.012, SL * .62, .25), [c2.x, c2.y, sd * .2], [0, 0, phi]));        // raised panel
+      const hd = on(SL * .52, .045); fit.push(tf(new THREE.SphereGeometry(.025, 10, 8), [hd.x, hd.y, sd * .06]));   // handle
+      for (const t of [.2, .8]) { const h0 = on(SL * t - .06, .03), h1 = on(SL * t + .06, .03); fit.push(cylGeo(h0.setZ(sd * .395), h1.setZ(sd * .395), .018, 8)); }   // hinges
+    }
+    const sill = on(.05, .02); fit.push(tf(new THREE.BoxGeometry(.06, .08, .84), [sill.x, sill.y, 0], [0, 0, phi]));
+    add(root, 'hatches', group(mesh(mergeGeos(gs), MAT.grey), mesh(mergeGeos(lids), MAT.greyLight), mesh(mergeGeos(doors), MAT.greyLight), mesh(mergeGeos(fit), MAT.brass)));
   }
   // Ship's boat (a small dinghy) under a canvas cover, on chocks at the stern.
   {
@@ -1010,8 +1265,8 @@ export function createDrazki({ registry, M, t }) {
     const tex = canvasTex(256, 32, (c, W, H) => { for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? '#f4f4ef' : '#d2321f'; c.fillRect(i * W / 8, 0, W / 8, H); } });
     const g = new THREE.Group(), m = new THREE.MeshStandardMaterial({ map: tex, roughness: .7 });
     for (const [xa, sd] of [[1.9, 1], [1.9, -1], [19.9, 1], [19.9, -1]]) {
-      const e = edge(xa), b = mesh(new THREE.TorusGeometry(.3, .065, 12, 32), m);
-      b.position.set(X(xa), deckY(xa, e.w - .05) + .5, sd * (e.w + .03)); b.rotation.y = 0; g.add(b);
+      const { e, w } = railZ(xa), b = mesh(new THREE.TorusGeometry(.3, .065, 12, 32), m);
+      b.position.set(X(xa), e.h + .5, sd * (w + .09)); b.rotation.y = 0; g.add(b);
     }
     add(root, 'lifebuoys', g);
   }
