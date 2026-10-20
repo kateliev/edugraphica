@@ -81,6 +81,11 @@ startExplorer({ site: 'drazki', ns: 'ship', createModel, parts: PARTS, groups: G
 | `update(time, dt, state)` | animation step |
 | `anchor`, `labelHidden`, `onMode`, `bindUI`, `redraw` | optional hooks (label positions, hiding labels, scene changes, UI access, repaint after fonts load) |
 
+Large plain surfaces get procedural **surface noise** from `assets/js/explorer/surface.js`:
+`addSurfaceNoise(material, { mottle, grain, color, rough, bump })` adds soft colour/gloss patches and a fine
+grain computed in the shader from the mesh's own coordinates (no textures, no UVs). Add `?noise=0` to the
+address to compare without it; `window.edugraphica.noise.value` (0…1) changes it live.
+
 Register every mesh with `registry.add(parent, partId, object, options)`. Each part gets its own
 material copies, so it can glow when selected and fade when another part is selected. Part ids must
 match the keys under `parts` in the model's strings. A material with `userData.cut = '<key>'` is

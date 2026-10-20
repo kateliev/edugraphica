@@ -7,6 +7,7 @@
 // the pick list, moves parts apart for the exploded view and clips the cutaway.
 import * as THREE from 'three';
 import { UP } from './geometry.js';
+import { reapplySurfaceNoise } from './surface.js';
 
 // partsMeta: [{ id, group, off:[x,y,z], swing?, sub?, parent?, label? }] — see <microsite>/model/parts.js
 //   parent: id of the part this one is a detail of. Selecting the detail keeps the parent
@@ -28,6 +29,7 @@ export function createRegistry(partsMeta, state) {
         c.userData = { ...mt.userData, baseOpacity: mt.opacity, baseTransparent: mt.transparent, baseDepthWrite: mt.depthWrite,
           baseEmissive: mt.emissive?.clone(), baseEmissiveIntensity: mt.emissiveIntensity };   // lamps and fires keep their own glow
         if (c.userData.cut) c.clippingPlanes = cutMap?.[c.userData.cut] || [];
+        reapplySurfaceNoise(c);   // clone() drops the shader hook of surface noise
         cache.set(mt, c); (partMats[id] ||= []).push(c);
       }
       return cache.get(mt);

@@ -19,6 +19,7 @@
 import * as THREE from 'three';
 import { mergeBufferGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { V3, UP, clamp, smooth, deg, rnd, mono, canvasTex, tube, displayFont, pillowGeo, roundRect } from '../../assets/js/explorer/geometry.js';
+import { addSurfaceNoise } from '../../assets/js/explorer/surface.js';
 
 export const DIMS = { length: 38, beam: 4.4, draught: 1.33, propTip: 2.3 };
 
@@ -184,9 +185,20 @@ export function createDrazki({ registry, M, t }) {
     lampWhite: new THREE.MeshStandardMaterial({ color: '#7d7d70', emissive: '#fff6d8', emissiveIntensity: .8 }),
   };
   MAT.fire.userData.fire = true;
-  const hullMat = key => cutMat(new THREE.MeshStandardMaterial({ map: hullTex, roughness: .5, metalness: .3 }), key);
-  const innerMat = key => cutMat(new THREE.MeshStandardMaterial({ color: '#a39b8d', roughness: .95, side: THREE.BackSide, envMapIntensity: .3 }), key);
-  const bulkMat = key => cutMat(std('#b3ab9e', { roughness: .9, envMapIntensity: .3 }), key);
+  // Surface noise (assets/js/explorer/surface.js) so big plain surfaces do not look like plastic:
+  // painted steel, the red-brown deck, matte interior machinery, the canvas boat cover.
+  const NOISE = {
+    paint: { mottle: .45, grain: 12, color: .05, rough: .12, bump: .004 },
+    deck: { mottle: .35, grain: 12, color: .08, rough: .08, bump: .003 },
+    inside: { mottle: .6, grain: 12, color: .07, rough: .1, bump: .003 },
+    canvas: { mottle: .9, grain: 16, color: .08, rough: .08, bump: .003 },
+  };
+  for (const m of [MAT.grey, MAT.greyLight, MAT.white, MAT.dark, MAT.black]) addSurfaceNoise(m, NOISE.paint);
+  for (const m of [MAT.boiler, MAT.engine, MAT.iron, MAT.primer]) addSurfaceNoise(m, NOISE.inside);
+  addSurfaceNoise(MAT.canvas, NOISE.canvas);
+  const hullMat = key => cutMat(addSurfaceNoise(new THREE.MeshStandardMaterial({ map: hullTex, roughness: .5, metalness: .3 }), NOISE.paint), key);
+  const innerMat = key => cutMat(addSurfaceNoise(new THREE.MeshStandardMaterial({ color: '#a39b8d', roughness: .95, side: THREE.BackSide, envMapIntensity: .3 }), NOISE.inside), key);
+  const bulkMat = key => cutMat(addSurfaceNoise(std('#b3ab9e', { roughness: .9, envMapIntensity: .3 }), NOISE.inside), key);
 
   /* ---------------- small geometry helpers ---------------- */
   const Q = new THREE.Quaternion(), E = new THREE.Euler(), M4 = new THREE.Matrix4();
@@ -238,10 +250,10 @@ export function createDrazki({ registry, M, t }) {
       add(root, 'hull', mesh(g, innerMat(key)), { noPick: true });
     }
     const gd = surfaceGeo(stationsMain, s => s.deck, side, deckUV);
-    add(root, 'deck', mesh(gd, cutMat(new THREE.MeshStandardMaterial({ map: deckTex, roughness: .85 }), 'main')));
+    add(root, 'deck', mesh(gd, cutMat(addSurfaceNoise(new THREE.MeshStandardMaterial({ map: deckTex, roughness: .85 }), NOISE.deck), 'main')));
     add(root, 'deck', mesh(gd, innerMat('main')), { noPick: true });
     const gf = surfaceGeo(stationsFwd, s => s.deck, side, deckUV);
-    add(root, 'forecastle', mesh(gf, cutMat(new THREE.MeshStandardMaterial({ map: fcTex, roughness: .55, metalness: .3 }), 'fwd')));
+    add(root, 'forecastle', mesh(gf, cutMat(addSurfaceNoise(new THREE.MeshStandardMaterial({ map: fcTex, roughness: .55, metalness: .3 }), NOISE.paint), 'fwd')));
     add(root, 'forecastle', mesh(gf, innerMat('fwd')), { noPick: true });
   }
 

@@ -23,6 +23,7 @@ import { createStage } from './stage.js';
 import { createRegistry } from './registry.js';
 import { createUI } from './ui.js';
 import { displayFont } from './geometry.js';
+import { SURFACE_NOISE } from './surface.js';
 
 export async function startExplorer({ site, ns, createModel, parts, groups, paints = [] }) {
   const lang = pickLang(), glossLang = pickGloss(lang);
@@ -83,6 +84,7 @@ export async function startExplorer({ site, ns, createModel, parts, groups, pain
   document.fonts?.ready.then(() => model.redraw?.());
 
   // Handle for later stages (lessons, quizzes) and for debugging from the console.
-  window.edugraphica = { THREE, stage, registry, model, state, ui, strings: { S, W, M, G }, t };
+  // noise: SURFACE_NOISE.value = 0…1 changes the surface noise live (or ?noise=0 in the address).
+  window.edugraphica = { THREE, stage, registry, model, state, ui, strings: { S, W, M, G }, t, noise: SURFACE_NOISE };
   return window.edugraphica;
 }
