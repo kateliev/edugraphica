@@ -23,6 +23,21 @@ import * as THREE from 'three';
 import { mergeBufferGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { V3, UP, clamp, smooth, deg, rnd, mono, canvasTex, tube, polyCurve, displayFont, pillowGeo, roundRect } from '../../assets/js/explorer/geometry.js';
 import { addSurfaceNoise } from '../../assets/js/explorer/surface.js';
+import { createShore } from './shore.js';
+
+// Scene colour presets (names in ship.json → looks), both a little darker than the stage defaults.
+// 'day' is the base look; 'dawn' takes its colours from Aivazovsky's 1871 painting of a French steam
+// battleship leaving a Black Sea port at dawn: teal sky going cream at the horizon, turquoise sea,
+// a low warm sun, pink light on the far hills.
+const LOOKS = [
+  { key: 'day', top: '#2470b2', mid: '#7cb4d8', horizon: '#b4c3ca', deep: '#05161d', shallow: '#0b2d38', skyRefl: '#4f6b79', seabed: '#03101a',
+    shore: { far: '#6e837f', plateau: '#223a29', near: '#132719', lit: '#4f7244', town: '#cbc3b0', roof: '#844c40', cliff: '#ada284' } },
+  { key: 'dawn', top: '#3d7a8e', mid: '#90b9b3', horizon: '#d6c9a1', deep: '#093f49', shallow: '#1b666c', skyRefl: '#7ca89f', seabed: '#083b43',
+    sun: '#ffc592', sunI: 2.6, sunDir: [6, 2.2, 4.5], hemiSky: '#d2e2da', hemiGround: '#2b5558', hemiI: .38, envGround: '#245c61',
+    glow: '#f2a46e', glowA: .45, clouds: .6, cloudC: '#e7cbaf', cloudS: '#7a8f92',
+    shore: { far: '#8f91ac', plateau: '#5d6787', near: '#223b37', lit: '#e3a48e', litA: .75, shade: '#343c5a', shadeA: .55,
+      town: '#e6d7ba', roof: '#ac6a53', cliff: '#ddba96' } },
+];
 
 export const DIMS = { length: 38, beam: 4.4, draught: 1.22, propTip: 2.3 };
 
@@ -441,7 +456,7 @@ export function createDrazki({ registry, M, t }) {
   {
     const g = new THREE.Group();
     for (const side of [1, -1]) {
-      const { p, n } = onHull(35.25, 1.72, side, .02);
+      const { p, n } = onHull(35.25, 1.36, side, .02);   // on the flat of the side, clear of the rounded deck edge
       const m = mesh(new THREE.PlaneGeometry(.95, .47), new THREE.MeshStandardMaterial({ map: plateTex, transparent: true, metalness: .6, roughness: .35, polygonOffset: true, polygonOffsetFactor: -2 }));
       m.position.copy(p); m.lookAt(p.clone().add(n)); g.add(m);
     }
@@ -1647,7 +1662,7 @@ export function createDrazki({ registry, M, t }) {
     funnels: () => new V3(X(22.9) - .2, FUN_TOP - .25, .45),
     shellHole: () => { const v = new V3(); shellHole.children[0].getWorldPosition(v); root.worldToLocal(v); return v; },
     ensign: () => new V3(X(STAFF.xa) - .745, STAFF.y + STAFF.staff - .48, 0),
-    nameplate: () => onHull(35.25, 1.72, 1, .05).p,
+    nameplate: () => onHull(35.25, 1.36, 1, .05).p,
     bulkheads: () => new V3(X(9.6), .3, .6),
     twinTubes: () => new V3(mount.position.x, mount.position.y + 1.4, 0),
     foreGun: () => GUNS[0].gun.position.clone().add(new V3(0, 1.15, 0)),
@@ -1663,8 +1678,9 @@ export function createDrazki({ registry, M, t }) {
   return {
     root, waterline, floorY: -2.28,
     home: { pos: new V3(44, 17, 27), target: new V3(1, 1.2, 0), tallDrop: 4 },   // starboard bow quarter: the whole ship fits between the side panels
-    stage: { scale: 4.5, view: { minDistance: 3, maxDistance: 140 }, shadowMap: 4096,
-      palette: { deep: '#061a22', shallow: '#0e3440', skyRefl: '#5d7886', seabed: '#041219', horizon: '#c6d2d8' } },   // the Black Sea: darker than the default
+    stage: { scale: 4.5, view: { minDistance: 3, maxDistance: 140 }, shadowMap: 4096, scenery: false,   // own backdrop: the Varna shore (shore.js)
+      palette: { deep: '#061a22', shallow: '#0e3440', skyRefl: '#5d7886', seabed: '#041219', horizon: '#c6d2d8' },   // the Black Sea: darker than the default
+      palettes: LOOKS },
     shadowSize: 23,
     motion: { heave: .05, roll: .012, pitch: .004 },
     controls,
@@ -1672,7 +1688,7 @@ export function createDrazki({ registry, M, t }) {
     labelHidden: (id, st) => PART[id]?.inside && !cutaway && (st?.explode ?? 0) < .5,
     onMode: m => { wake.visible = m === 'water'; },
     onExplode: () => {},
-    attach: () => {},
+    attach: stage => { createShore(stage); },
     bindUI: ui => { onFireState = () => ui.refreshControls(); },
     redraw: () => { drawPlate(); drawTelegraph(); },
   };

@@ -12,10 +12,17 @@ import { canvasTex, rnd } from './geometry.js';
 export const COL = { top: '#2c82cf', mid: '#8fc9ee', horizon: '#d6ecf8', deep: '#0b4c70', shallow: '#1d88ad', skyRefl: '#a7d6f1', seabed: '#0e5677' };
 const HB_N = 32;   // waterline samples passed to the water shader
 
-// opts: { scale = 1, view: { minDistance, maxDistance, fov }, marks = false, shadowMap = 2048, palette: { …COL keys } }
-//   palette overrides the sky and sea colours (e.g. a darker sea), keys as in COL.
+// Light of a scene besides COL; a palette may override any of these keys too.
+const LIGHT = { sun: '#fff3df', sunI: 2.1, sunDir: [5, 8, 4.5], hemiSky: '#dff1ff', hemiGround: '#2c5d74', hemiI: .35, envGround: '#2f6f8f',
+  exposure: 1, glow: '#ffffff', glowA: 0, clouds: 0, cloudC: '#ffffff', cloudS: '#9aa9b6' };
+
+// opts: { scale = 1, view: { minDistance, maxDistance, fov }, marks = false, scenery = true, shadowMap = 2048,
+//         palette: { …COL/LIGHT keys }, palettes: [{ key, …COL/LIGHT keys }] }
+//   palette overrides the base sky, sea and light (e.g. a darker sea). palettes are presets on top of
+//   that base (the first one is the start): setPalette(key) switches, onPalette(fn) lets a model
+//   recolour its own scenery. scenery: false leaves out the islands and clouds.
 export function createStage(canvas, opts = {}) {
-  const k = opts.scale || 1, rk = Math.sqrt(k), C = { ...COL, ...opts.palette };
+  const k = opts.scale || 1, rk = Math.sqrt(k), C = { ...COL, ...LIGHT, ...opts.palette };
   THREE.ColorManagement.legacyMode = false;
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -37,14 +44,26 @@ export function createStage(canvas, opts = {}) {
   const SUN = new THREE.Vector3(5, 8, 4.5).normalize();
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false,
-    uniforms: { top: { value: new THREE.Color(C.top) }, mid: { value: new THREE.Color(C.mid) }, bottom: { value: new THREE.Color(C.horizon) }, sunDir: { value: SUN } },
+    uniforms: { top: { value: new THREE.Color(C.top) }, mid: { value: new THREE.Color(C.mid) }, bottom: { value: new THREE.Color(C.horizon) }, sunDir: { value: SUN },
+      glowC: { value: new THREE.Color() }, glowA: { value: 0 }, cloudC: { value: new THREE.Color() }, cloudS: { value: new THREE.Color() }, cloudA: { value: 0 } },
     vertexShader: `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-    fragmentShader: `uniform vec3 top, mid, bottom, sunDir; varying vec3 vDir;
+    fragmentShader: `uniform vec3 top, mid, bottom, sunDir, glowC, cloudC, cloudS; uniform float glowA, cloudA; varying vec3 vDir;
+      float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y); }
+      float fbm(vec2 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 5; i++) { s += a * vnoise(p); p = p * 2.03 + vec2(17.1, 9.3); a *= 0.5; } return s; }
       void main(){
-        float h = vDir.y;
+        vec3 d = normalize(vDir); float h = d.y;
         vec3 c = mix(mid, top, pow(clamp(h,0.0,1.0), 0.55));
         c = mix(bottom, c, smoothstep(-0.01, 0.16, h));
-        float s = max(dot(normalize(vDir), sunDir), 0.0);
+        float s = max(dot(d, sunDir), 0.0);
+        c += glowC * glowA * pow(s, 3.0) * (1.0 - smoothstep(0.0, 0.45, h));   // warm light low round the sun (dawn)
+        if (cloudA > 0.0 && h > 0.0) {   // thin streaks on a flat cloud deck: perspective lays them along the horizon
+          vec2 p = d.xz / (h + 0.05);
+          float n = fbm(p * vec2(0.35, 1.6) + vec2(3.0, 0.0)), m = fbm(p * 1.3 + vec2(-5.0, 2.0));
+          float dens = smoothstep(0.52, 0.78, n * 0.75 + m * 0.35) * cloudA * smoothstep(0.0, 0.06, h) * (1.0 - smoothstep(0.55, 0.95, h));
+          c = mix(c, mix(cloudS, cloudC, smoothstep(0.35, 0.8, m) * 0.6 + pow(s, 2.0) * 0.4), dens);
+        }
         c += vec3(1.0,0.93,0.78) * (pow(s, 900.0) * 6.0 + pow(s, 14.0) * 0.16);
         gl_FragColor = vec4(c, 1.0);
         #include <tonemapping_fragment>
@@ -54,14 +73,15 @@ export function createStage(canvas, opts = {}) {
   const sky = new THREE.Mesh(new THREE.SphereGeometry(900 * k, 48, 24), skyMat);
   scene.add(sky);
   const pmrem = new THREE.PMREMGenerator(renderer);
-  const envScene = new THREE.Scene();
-  envScene.add(new THREE.Mesh(new THREE.SphereGeometry(10, 48, 24), skyMat.clone()));
-  const envGround = new THREE.Mesh(new THREE.CircleGeometry(9.5, 32), new THREE.MeshBasicMaterial({ color: '#2f6f8f' }));
+  const envScene = new THREE.Scene(), envSkyMat = skyMat.clone();   // the environment map is made in setPalette
+  envScene.add(new THREE.Mesh(new THREE.SphereGeometry(10, 48, 24), envSkyMat));
+  const envGround = new THREE.Mesh(new THREE.CircleGeometry(9.5, 32), new THREE.MeshBasicMaterial({ color: C.envGround }));
   envGround.rotation.x = -Math.PI / 2; envGround.position.y = -1.5; envScene.add(envGround);
-  scene.environment = pmrem.fromScene(envScene, .04).texture;
+  let envRT = null;
 
-  scene.add(new THREE.HemisphereLight('#dff1ff', '#2c5d74', .35));
-  const sun = new THREE.DirectionalLight('#fff3df', 2.1);
+  const hemi = new THREE.HemisphereLight(C.hemiSky, C.hemiGround, C.hemiI);
+  scene.add(hemi);
+  const sun = new THREE.DirectionalLight(C.sun, C.sunI);
   sun.position.copy(SUN).multiplyScalar(14 * k);
   sun.castShadow = true; const sm = opts.shadowMap || 2048; sun.shadow.mapSize.set(sm, sm);
   Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4, near: 2 * k, far: 30 * k });
@@ -125,16 +145,17 @@ export function createStage(canvas, opts = {}) {
   seabed.rotation.x = -Math.PI / 2; seabed.position.y = -5 * k; scene.add(seabed);
 
   // ---- distant islands, clouds and (for sailing models) two race marks
-  const scenery = new THREE.Group(); scene.add(scenery);
+  const scenery = new THREE.Group(); scene.add(scenery);   // a model may add its own backdrop here (shown on the water only)
+  const scenic = opts.scenery !== false;
   const land = new THREE.MeshStandardMaterial({ color: '#5f9a5a', flatShading: true, roughness: .9 });
   const rock = new THREE.MeshStandardMaterial({ color: '#c9b98d', flatShading: true, roughness: 1 });
-  for (const [x, z, r, h] of [[-90, -150, 28, 11], [70, -190, 40, 16], [210, -60, 34, 10], [-210, 60, 46, 18], [40, 240, 30, 9], [-120, 220, 22, 7]]) {
+  for (const [x, z, r, h] of scenic ? [[-90, -150, 28, 11], [70, -190, 40, 16], [210, -60, 34, 10], [-210, 60, 46, 18], [40, 240, 30, 9], [-120, 220, 22, 7]] : []) {
     const g = new THREE.IcosahedronGeometry(1, 1); g.scale(r * k, h * k, r * k * .75);
     const m = new THREE.Mesh(g, land); m.position.set(x * k, -h * k * .35, z * k); m.rotation.y = rnd() * 6; scenery.add(m);
     const b = new THREE.Mesh(new THREE.CylinderGeometry(r * k * 1.08, r * k * 1.15, 1.2 * k, 9), rock); b.position.set(x * k, -.3 * k, z * k); b.scale.z = .78; scenery.add(b);
   }
   const cloud = new THREE.MeshStandardMaterial({ color: '#ffffff', flatShading: true, roughness: 1, emissive: '#ffffff', emissiveIntensity: .35, fog: false });
-  for (const [x, y, z, s] of [[-160, 70, -320, 1], [120, 85, -360, 1.3], [320, 60, -80, .9], [-330, 90, 120, 1.2]]) {
+  for (const [x, y, z, s] of scenic ? [[-160, 70, -320, 1], [120, 85, -360, 1.3], [320, 60, -80, .9], [-330, 90, 120, 1.2]] : []) {
     const g = new THREE.Group();
     for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(10 + rnd() * 9, 1), cloud); m.position.set((i - 2.5) * 13 + rnd() * 6, rnd() * 7, rnd() * 10); g.add(m); }
     g.position.set(x * k, y * k, z * k); g.scale.setScalar(s * k); scenery.add(g);
@@ -175,11 +196,34 @@ export function createStage(canvas, opts = {}) {
     scene.background = w ? null : new THREE.Color(stageColor || '#d3e8f5');
     controls.maxPolarAngle = w ? 1.62 : 1.78;
   }
+  // Scene colour presets: sky, clouds, sea, fog, sun and fill light, and the reflections made from them.
+  const palettes = (opts.palettes?.length ? opts.palettes : [{ key: 'base' }]).map(p => ({ ...C, ...p }));
+  const paletteHooks = [];
+  let palette = null;
+  function setPalette(key) {
+    const p = palettes.find(x => x.key === key) || palettes[0]; palette = p;
+    SUN.set(...p.sunDir).normalize();
+    for (const u of [skyMat.uniforms, envSkyMat.uniforms]) {
+      u.top.value.set(p.top); u.mid.value.set(p.mid); u.bottom.value.set(p.horizon); u.sunDir.value.copy(SUN);
+      u.glowC.value.set(p.glow); u.glowA.value = p.glowA; u.cloudC.value.set(p.cloudC); u.cloudS.value.set(p.cloudS); u.cloudA.value = p.clouds;
+    }
+    waterUniforms.uDeep.value.set(p.deep); waterUniforms.uShallow.value.set(p.shallow); waterUniforms.uSkyC.value.set(p.skyRefl); waterUniforms.uHorizon.value.set(p.horizon);
+    seabed.material.color.set(p.seabed); fog.color.set(p.horizon); envGround.material.color.set(p.envGround);
+    hemi.color.set(p.hemiSky); hemi.groundColor.set(p.hemiGround); hemi.intensity = p.hemiI;
+    sun.color.set(p.sun); sun.intensity = p.sunI; sun.position.copy(SUN).multiplyScalar(14 * k);
+    renderer.toneMappingExposure = p.exposure;
+    envRT?.dispose(); envRT = pmrem.fromScene(envScene, .04); scene.environment = envRT.texture;
+    paletteHooks.forEach(f => f(p));
+  }
+  function onPalette(fn) { paletteHooks.push(fn); fn(palette); }
+  setPalette(palettes[0].key);
+
   function tick(t, root) {
     waterUniforms.uTime.value = t;
     waterUniforms.uBoatInv.value.copy(root.matrixWorld).invert();
     marks.forEach((m, i) => { m.position.y = Math.sin(t * 1.1 + i * 2) * .06; m.rotation.z = Math.sin(t * .8 + i) * .06; });
   }
 
-  return { renderer, scene, camera, controls, sun, scale: k, setWaterline, setFloor, setShadowSize, setMode, tick };
+  return { renderer, scene, camera, controls, sun, scenery, scale: k, palettes, get palette() { return palette; },
+    setWaterline, setFloor, setShadowSize, setMode, setPalette, onPalette, tick };
 }

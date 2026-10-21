@@ -67,6 +67,8 @@ Units: metres. `xa` = distance forward of the stern; height above the waterline.
 - Hull curves are monotone splines fitted to the drawing; no offsets table has been published.
 - The model shows the boat **as built (1908–1912)**: two 47 mm guns, three tubes, no minesweeping gear, no depth-charge rails.
 - Colours follow the museum ship today; the 1912 colour scheme is not documented. The sea uses a darker "Black Sea" palette (`stage.palette` in the model).
+- The shore behind the ship (`drazki/model/shore.js`) is a loose impression of Varna Bay seen from the sea, not a survey: from south to north the Avren plateau ending at Cape Galata with its pale cliffs, the port at the head of the bay, the town rising to the flat-topped Franga plateau, and the wooded coast towards Golden Sands. Heights and distances are not to scale. It is a painted band that moves with the camera, so it cannot be reached by zooming.
+- Scene colours: "Day" is the base look. "Dawn, after Aivazovsky" takes its sky, sea and light colours from Ivan Aivazovsky's 1871 painting of a French steam battleship leaving a Black Sea port at dawn (teal sky turning cream at the horizon, turquoise sea, low warm sun, pink light on the far hills). It is a colour mood, not a record of a real morning.
 - Propeller diameter, the exact shape of the cowls, the interior furniture and the anchor type are estimates.
 - The museum ship is the hull of the sister ship **Strogi** with Drazki's funnel, gun and fittings.
 - Bulgarian naval terms in `drazki/i18n/bg/` should be checked by a naval historian or the Naval Museum before release.

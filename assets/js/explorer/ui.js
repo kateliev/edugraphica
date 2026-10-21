@@ -195,6 +195,20 @@ export function createUI({ stage, registry, model, state, S, W, M, G, parts, gro
     swEl.appendChild(b);
   });
 
+  // Scene colour presets (stage palettes, names in M.looks): swatches of sky over sea beside Water/Studio.
+  if (stage.palettes.length > 1) {
+    const lk = Object.assign(document.createElement('div'), { className: 'sw', id: 'looks' });
+    lk.setAttribute('role', 'group'); lk.setAttribute('aria-label', t(S, 'ui.look'));
+    for (const p of stage.palettes) {
+      const b = document.createElement('button'), label = t(M, `looks.${p.key}`);
+      b.style.background = `linear-gradient(180deg, ${p.top}, ${p.horizon} 54%, ${p.shallow} 56%, ${p.deep})`;
+      b.title = label; b.setAttribute('aria-label', label); press(b, p === stage.palette);
+      b.onclick = () => { stage.setPalette(p.key); lk.querySelectorAll('button').forEach(x => press(x, x === b)); };
+      lk.appendChild(b);
+    }
+    document.querySelector('.toolbar .seg').after(lk);
+  }
+
   /* ---------------- 3D labels ---------------- */
   labelsEl.hidden = true;
   const labelItems = parts.filter(p => p.label).map(p => {

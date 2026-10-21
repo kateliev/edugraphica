@@ -34,6 +34,10 @@
     "cutaway": "Cutaway",
     "cutawayTitle": "Take away the starboard side plating to look inside"
   },
+  "looks": {
+    "day": "Day",
+    "dawn": "Dawn, after Aivazovsky"
+  },
   "orders": {
     "stop": "Stop",
     "slow": "Slow ahead",
