@@ -36,12 +36,12 @@ Units: metres. `xa` = distance forward of the stern; height above the waterline.
 
 | Item | Position / size |
 |---|---|
-| Hull | LOA 38.0, beam 4.4, keel 1.33 below WL from xa 13 to 33.5; counter stern bottom 0.5 above WL at xa 0 |
+| Hull | keel at the stern deeper (Fig. 2): −0.25 at the stern edge, −0.57 at xa 1.4, −0.84 at 2.8, −1.12 at 4.5; stern finer over its last 0.8 m to match the CAD plan (deck half-width ≈ 0.36 at 0.23 m, 0.55 at 0.42 m from the stern); LOA 38.0, beam 4.4, keel 1.22 below WL from xa 12 to 33.5 |
 | Deck crown | 1.12 (stern) → 1.5 (amidships) → 1.97 (forecastle at xa 27.3) → 1.86 (stem) |
 | Section | egg-shaped (Fig. 5): widest ≈ 0.5 above WL amidships; rounded deck edge; turtle-back forecastle forward of xa 26.6 |
-| Rudder | hung outboard aft of the stern, xa −0.85 … +0.25, WL+0.3 … −1.4 |
-| Propeller | xa 0.95, shaft axis 1.3 below WL, Ø ≈ 1.8 (tip ≈ 2.2–2.3 below WL), 3 blades |
-| Shaft | engine crank (xa 10.4, −0.78) to propeller; leaves the hull at ≈ xa 7; bracket at xa 2.1 |
+| Rudder | plate hung on a stock at xa −0.34 (0.34 aft of the hull end), plate xa −1.23 … −0.03, top +0.27 rising in a curved shoulder to +0.6 at the stock, foot −1.4 (builder's drawing Fig. 2, measured at 33.4 px/m on the owner's close-up; the dimension reads 1.33). Stock held to the stern edge by two arms, up to +1.32; tiller forward over the deck to xa 1.6 with a yoke for the steering chains (Fig. 2, CAD). Red (museum ship) |
+| Propeller | xa 0.58, shaft axis 1.38 below WL (Fig. 2), Ø ≈ 1.8, 3 blades. Propeller guard: a bar from the keel at xa 4.45 down under the propeller, lowest 2.62 below WL (the drawing's 2.630), up to the rudder foot (Fig. 2) |
+| Shaft | engine crank (xa 10.4, −0.78) to propeller; leaves the hull at ≈ xa 7; bracket at xa 1.23: boss, two arms to the hull, strut down to the propeller guard (Fig. 2; museum-ship photo) |
 | Boilers | aft xa 17.3–19.7 (fires forward), forward xa 22.6–25.0 (fires aft); stokehold between |
 | Funnels | xa 19.4 (second / aft, with the shell hole) and 22.9 (first); Ø 0.84; top 3.95 above WL; rake 4° |
 | Engine | 3 cylinders at xa 13.2 / 12.2 / 11.1 (HP / IP / LP) |
@@ -52,6 +52,7 @@ Units: metres. `xa` = distance forward of the stern; height above the waterline.
 | Guns | two 47 mm, one each side, opposite each other at xa 24.88; each stands half on the hull side, half on a perforated wing 0.3 wide (edge − 0.1), xa 22.7–25.85, both trained forward (CAD reconstruction, Draganov 2025; owner 2026-10-21: the perspective CAD view looked staggered, the owner set them opposite). The builder's drawing has the forward gun on the boiler casing at xa 24.45 and one aft at xa 2.35 |
 | Stern fittings | baluster pedestal 0.6 forward of the aft wheel stand (xa 5.8, centreline); cage of bent tube (three hoops across, one along the top, open at the back) over a horseshoe-shaped wall 0.26 high, round at the front and open aft, with a dish inside; front at xa 3.09, 0.8 to port, 0.72 wide, ≈ 1.35 high (owner's CAD view and plan, museum-ship photo, coloured profile/plan, 2026-10-21). A V-handle hatch stands abreast it on the starboard side (xa 2.12). Use of the cage and the pedestal unknown; an online search (2026-10-21) found nothing. The aft wheel stands midway between the cage and the companion doors (owner): stand at xa 5.2, wheel at 4.9; the CAD plan has it at ≈ 4.35. The stern rail is closed round the stern (museum ship, CAD) |
 | Ship's boats | two, one each side, xa 3.2–7.5 (4.3 m), turned on their sides and lashed against the hull at rail level (centre ≈ 1.32 above WL), bottom outboard, crossed straps over the bottom (owner's coloured profile and plan, 2026-10-21). The builder's cutaway model shows one dinghy on deck |
+| Ensign staff | on an outrigger aft of the stern: two bars from the deck edges at xa 0.5 meet 1.1 m aft of the hull; staff at xa −0.6 on a cross-piece; the stern rail closes to the staff (CAD, Fig. 2, coloured drawing; owner) |
 | Engine telegraph | inside the conning tower, port forward corner beside the wheel (owner) |
 | Searchlight | on the forecastle at xa 29.35 |
 | Bulkheads | xa 4.0, 9.6, 16.8, 25.6, 28.2, 35.2 |

@@ -7,7 +7,7 @@
 //   * Builder's general arrangement, "Torpedo-boats and slipway for the Bulgarian Government,
 //     constructed by Messrs. Schneider and Co., Creusot and Chalon-sur-Saône" (Engineering, c. 1908):
 //     profile, deck plan and two sections; length 38.000 m, beam 4.400 m, draught 1.220 m (Fig. 5),
-//     depth 2.750 m, 1.33 m to the rudder foot, 2.63 m to the propeller tip. Positions below are measured off that drawing.
+//     depth 2.750 m, 1.33 m to the rudder foot, 2.63 m to the bottom of the propeller guard. Positions below are measured off that drawing.
 //   * navypedia.org: 97.5 t, 1 shaft, 1 triple-expansion engine, 2 Normand boilers, 1950 hp, 26 kn,
 //     11 t coal, 2 × 47 mm guns, 1 twin 450 mm tube + 1 bow 450 mm tube, crew 27–32.
 //   * The museum ship in Varna and the cutaway builder's model in the Naval Museum, Varna (photos):
@@ -37,8 +37,8 @@ export function createDrazki({ registry, M, t }) {
      in to the deck centre (exponent QU: flat cambered deck amidships, round
      "turtle-back" on the forecastle). All curves are monotone splines in xa.
      ===================================================================== */
-  const B = mono([[0, 0], [.25, .62], [.8, 1.06], [1.8, 1.47], [3.2, 1.8], [5, 2.02], [7, 2.14], [9.5, 2.2], [20, 2.2], [23.5, 2.15], [27, 1.95], [30, 1.66], [33, 1.24], [35.5, .8], [37.2, .36], [38, 0]]);
-  const KEEL = mono([[0, .02], [1, -.2], [2.5, -.48], [4.2, -.77], [6.5, -1.08], [9, -1.19], [12, -1.22], [33.5, -1.22], [35.5, -1.17], [37, -1.03], [37.7, -.88], [38, -.75]]);
+  const B = mono([[0, 0], [.25, .47], [.8, .9], [1.8, 1.46], [3.2, 1.8], [5, 2.02], [7, 2.14], [9.5, 2.2], [20, 2.2], [23.5, 2.15], [27, 1.95], [30, 1.66], [33, 1.24], [35.5, .8], [37.2, .36], [38, 0]]);
+  const KEEL = mono([[0, -.25], [.7, -.42], [1.4, -.57], [2.1, -.69], [2.8, -.84], [3.4, -.99], [4.5, -1.12], [6.5, -1.19], [9, -1.21], [12, -1.22], [33.5, -1.22], [35.5, -1.17], [37, -1.03], [37.7, -.88], [38, -.75]]);
   const ZM = mono([[0, .8], [3, .62], [7, .5], [12, .5], [24, .5], [29, .55], [33, .72], [38, 1.0]]);
   const TOP = mono([[0, 1.2], [4, 1.27], [10, 1.4], [16, 1.48], [24, 1.53], [25.9, 1.55], [26.5, 1.76], [27.3, 1.97], [30, 1.98], [33, 1.92], [38, 1.86]]);
   const PL = mono([[0, 2.0], [6, 2.1], [12, 2.0], [24, 2.0], [30, 1.8], [35, 1.6], [38, 1.45]]);
@@ -174,6 +174,7 @@ export function createDrazki({ registry, M, t }) {
     shaft: std('#0c0d0f', { roughness: 1, side: THREE.BackSide, envMapIntensity: 0 }),   // inside of ducts
     void: std('#050506', { roughness: 1, envMapIntensity: 0, side: THREE.DoubleSide }),  // the dark depth of a duct
     white: std('#efefe9', { roughness: .5 }),
+    red: std('#640904', { roughness: .6, metalness: .2 }),                                                       // rudder, its stock and the stern frame: the hull's RED as a linear colour
     glass: new THREE.MeshPhysicalMaterial({ color: '#1c2a36', roughness: .06, metalness: .1, clearcoat: 1 }),
     boiler: std('#3d4247', { roughness: .8, metalness: .05, envMapIntensity: .3 }),
     drum: std('#6a7178', { roughness: .45, metalness: .35, envMapIntensity: .45 }),
@@ -196,7 +197,7 @@ export function createDrazki({ registry, M, t }) {
     inside: { mottle: .6, grain: 12, color: .07, rough: .1, bump: .003 },
     canvas: { mottle: .9, grain: 16, color: .08, rough: .08, bump: .003 },
   };
-  for (const m of [MAT.grey, MAT.greyLight, MAT.white, MAT.dark, MAT.black]) addSurfaceNoise(m, NOISE.paint);
+  for (const m of [MAT.grey, MAT.greyLight, MAT.white, MAT.dark, MAT.black, MAT.red]) addSurfaceNoise(m, NOISE.paint);
   for (const m of [MAT.boiler, MAT.engine, MAT.iron, MAT.primer]) addSurfaceNoise(m, NOISE.inside);
   addSurfaceNoise(MAT.canvas, NOISE.canvas);
   const hullMat = key => cutMat(addSurfaceNoise(new THREE.MeshStandardMaterial({ map: hullTex, roughness: .5, metalness: .3 }), NOISE.paint), key);
@@ -674,17 +675,26 @@ export function createDrazki({ registry, M, t }) {
     g.add(tube([new V3(X(11.1), .62, -.35), new V3(X(11.4), .5, -.8), new V3(X(12.2), -.05, -1.0), new V3(X(12.6), -.15, -1.0)], .1, MAT.copper, 24));
     add(root, 'condenser', g);
   }
+  // Propeller guard (builder's drawing, Fig. 2): a bar from the keel at xa 4.4 down under the propeller, 2.6 m
+  // below the waterline at its lowest, and back up to the rudder foot. GUARD: (xa, y) along its centre.
+  const GUARD = [[4.45, -1.08], [3.6, -1.66], [2.4, -2.02], [1.6, -2.38], [1.15, -2.58], [.4, -2.62], [-.05, -2.52], [-.27, -2.02], [-.34, -1.42]];
+  const guardY = xa => { for (let i = 0; i < GUARD.length - 1; i++) { const [x0, y0] = GUARD[i], [x1, y1] = GUARD[i + 1]; if (xa <= x0 && xa >= x1) return y0 + (y1 - y0) * (x0 - xa) / (x0 - x1); } return GUARD[GUARD.length - 1][1]; };
+  const BRACKET_XA = 1.23;
   // Shaft line: engine → stern tube → bracket → propeller.
-  const PROP = { xa: .95, y: -1.3 }, SHAFT0 = { xa: 10.4, y: ENG.crankY };
+  const PROP = { xa: .58, y: -1.38 }, SHAFT0 = { xa: 10.4, y: ENG.crankY };
   const shaftY = xa => SHAFT0.y + (PROP.y - SHAFT0.y) * (SHAFT0.xa - xa) / (SHAFT0.xa - PROP.xa);
   {
     const g = new THREE.Group();
     g.add(mesh(cylGeo(new V3(X(SHAFT0.xa), SHAFT0.y, 0), new V3(X(PROP.xa + .1), PROP.y, 0), .07, 14), MAT.steel));
     let xo = 9; while (xo > 2 && KEEL(xo) < shaftY(xo) - .05) xo -= .05;       // where the shaft leaves the hull
     g.add(mesh(cylGeo(new V3(X(xo + .4), shaftY(xo + .4), 0), new V3(X(xo - 1.1), shaftY(xo - 1.1), 0), .15, 18, .12), MAT.grey));
-    const bx = 2.1, by = shaftY(bx);
-    g.add(mesh(cylGeo(new V3(X(bx - .2), by, 0), new V3(X(bx + .2), shaftY(bx + .2), 0), .13, 16), MAT.grey));
-    for (const sd of [1, -1]) g.add(mesh(cylGeo(new V3(X(bx), by, 0), new V3(X(bx + .15), KEEL(bx + .15) + .05, sd * .42), .05, 10), MAT.grey));
+    // shaft bracket just ahead of the propeller: a boss on the shaft, two arms up to the hull and a strut down
+    // to the propeller guard; red like the rudder (builder's drawing, museum ship)
+    const bx = BRACKET_XA, by = shaftY(bx), br = [];
+    br.push(cylGeo(new V3(X(bx - .15), shaftY(bx - .15), 0), new V3(X(bx + .15), shaftY(bx + .15), 0), .12, 16));
+    for (const sd of [1, -1]) { const ya = KEEL(bx) + .1; br.push(cylGeo(new V3(X(bx), by, 0), new V3(X(bx), ya, sd * Math.max(hb(bx, ya) - .03, .05)), .05, 10)); }
+    br.push(cylGeo(new V3(X(bx), by, 0), new V3(X(bx), guardY(bx), 0), .05, 10));
+    g.add(mesh(mergeGeos(br), MAT.red));
     g.add(mesh(tf(new THREE.BoxGeometry(.4, .3, .45), [X(10.05), SHAFT0.y + .02, 0]), MAT.engine));   // thrust block
     add(root, 'shaft', g);
   }
@@ -715,13 +725,24 @@ export function createDrazki({ registry, M, t }) {
     prop.add(mesh(mergeGeos(blades), bm));
     add(root, 'propeller', prop);
   }
-  // Rudder: hung on the stern, behind the propeller (French torpedo-boat style).
+  // Rudder (builder's drawing, Fig. 2; museum ship; CAD): a plate hung on a stock 0.34 m aft of the stern, its
+  // top rising in a curved shoulder to the stock. The stock is held to the stern edge by two arms and runs up
+  // to deck height, where a tiller leads forward over the deck; the propeller guard ends at its foot. All red.
+  const RUD = { xa: -.34, foot: -1.4, head: 1.32, tiller: 1.6 };
   {
-    const sh = new THREE.Shape(); sh.moveTo(.22, .04); sh.lineTo(-.82, .04); sh.lineTo(-.86, -1.2); sh.quadraticCurveTo(-.84, -1.38, -.62, -1.4); sh.lineTo(.08, -1.4); sh.quadraticCurveTo(.24, -1.38, .24, -1.2); sh.closePath();
-    const g = new THREE.ExtrudeGeometry(sh, { depth: .04, bevelEnabled: true, bevelThickness: .035, bevelSize: .03, bevelSegments: 3, curveSegments: 10 });
-    g.translate(X(0), 0, -.02);
-    const rg = group(mesh(g, MAT.grey), mesh(cylGeo(new V3(X(.12), -.02, 0), new V3(X(.12), 1.0, 0), .065, 14), MAT.grey));
-    add(root, 'rudder', rg);
+    const sh = new THREE.Shape(), f = .31, a = -.89, t = .27;   // plate: f forward of the stock, a aft of it
+    sh.moveTo(f, t); sh.lineTo(f, RUD.foot + .14); sh.quadraticCurveTo(f, RUD.foot, f - .14, RUD.foot); sh.lineTo(a + .2, RUD.foot);
+    sh.quadraticCurveTo(a, RUD.foot, a, RUD.foot + .2); sh.lineTo(a, t); sh.quadraticCurveTo(a + .5, t + .04, -.1, .6); sh.lineTo(.1, .6); sh.lineTo(f, t + .05); sh.closePath();
+    const g = new THREE.ExtrudeGeometry(sh, { depth: .04, bevelEnabled: true, bevelThickness: .035, bevelSize: .03, bevelSegments: 3, curveSegments: 12 });
+    g.translate(X(RUD.xa), 0, -.02);
+    const frame = [g];
+    frame.push(cylGeo(new V3(X(RUD.xa), RUD.foot + .05, 0), new V3(X(RUD.xa), RUD.head + .06, 0), .07, 14));            // stock
+    for (const y of [.7, 1.05]) frame.push(cylGeo(new V3(X(RUD.xa), y, 0), new V3(X(.02), y, 0), .045, 10));          // arms to the stern edge
+    for (const y of [.7, 1.05]) frame.push(tf(new THREE.CylinderGeometry(.1, .1, .08, 16), [X(RUD.xa), y, 0]));       // their collars
+    frame.push(tf(new THREE.BoxGeometry(RUD.tiller - RUD.xa, .1, .07), [X((RUD.xa + RUD.tiller) / 2), RUD.head, 0]));  // tiller
+    frame.push(tf(new THREE.BoxGeometry(.1, .1, .8), [X(RUD.tiller), RUD.head, 0]));                                    // yoke for the chains
+    frame.push(tube(new THREE.CatmullRomCurve3(GUARD.map(([x, y]) => new V3(X(x), y, 0)), false, 'centripetal'), .05, MAT.red, 80).geometry);   // propeller guard
+    add(root, 'rudder', mesh(mergeGeos(frame), MAT.red));
   }
 
   /* =====================================================================
@@ -889,7 +910,7 @@ export function createDrazki({ registry, M, t }) {
     add(root, 'foreGun', g);
   }
   // Aft steering position: a wheel on the stern deck. Its barrel winds two chains that run along the
-  // deck, over guide sheaves, to the quadrant on the rudder head: turn the wheel and the rudder turns.
+  // deck, over guide sheaves, to the yoke at the end of the tiller: turn the wheel and the rudder turns.
   {
     // the wheel stands midway between the cage and the companion doors (owner; CAD plan, coloured drawing)
     const XW = 5.2, g = new THREE.Group(), xs = X(XW), yd = deckY(XW, 0) - .02, ya = yd + 1.0, yb = yd + .72;
@@ -903,17 +924,11 @@ export function createDrazki({ registry, M, t }) {
     const sp = []; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; sp.push(cylGeo(new V3(0, 0, 0), new V3(Math.cos(a) * .52, Math.sin(a) * .52, 0), .018, 6)); }
     w.add(mesh(new THREE.TorusGeometry(.42, .026, 8, 40), MAT.wood), mesh(mergeGeos(sp), MAT.wood), mesh(tf(new THREE.CylinderGeometry(.07, .07, .1, 16), [0, 0, 0], [Math.PI / 2, 0, 0]), MAT.brass));
     g.add(w);
-    // rudder quadrant on the rudder head, pointing forward
-    const xq = X(.12), yq = deckY(.3, 0) + .05, R = .5, qa = deg(45), quad = [];
-    quad.push(tf(new THREE.CylinderGeometry(.08, .08, .1, 16), [xq, yq, 0]));
-    for (const sd of [1, -1]) quad.push(cylGeo(new V3(xq, yq, 0), new V3(xq + R * Math.cos(qa), yq, sd * R * Math.sin(qa)), .025, 8));
-    const arc = []; for (let i = 0; i <= 12; i++) { const a = -qa + 2 * qa * i / 12; arc.push(new V3(xq + R * Math.cos(a), yq, R * Math.sin(a))); }
-    g.add(mesh(mergeGeos(quad), MAT.iron), tube(arc, .03, MAT.iron, 24));
     // chains and sheaves
     const chain = [], sheaves = [];
     for (const sd of [1, -1]) {
-      const p0 = new V3(xs, yb - .09, sd * .16), p1 = new V3(xs - .02, yd + .1, sd * .2), p2 = new V3(X(1.25), deckY(1.25, .34) + .08, sd * .34);
-      const p3 = new V3(xq + R * Math.cos(qa) + .02, yq, sd * (R * Math.sin(qa) + .02));
+      const p0 = new V3(xs, yb - .09, sd * .16), p1 = new V3(xs - .02, yd + .1, sd * .2), p2 = new V3(X(2.5), deckY(2.5, .34) + .08, sd * .34);
+      const p3 = new V3(X(RUD.tiller), RUD.head, sd * .38);   // the ends of the tiller yoke
       chain.push(chainLinks([p0, p1, p1.clone().lerp(p2, .5).add(new V3(0, -.03, 0)), p2, p3], .02));
       for (const p of [p1, p2]) sheaves.push(tf(new THREE.CylinderGeometry(.065, .065, .05, 14), [p.x, p.y - .02, p.z]), tf(new THREE.BoxGeometry(.16, .04, .1), [p.x, p.y - .07, p.z]));
     }
@@ -1149,10 +1164,17 @@ export function createDrazki({ registry, M, t }) {
   // Picture: ensign.png, rasterised from the public-domain "Naval ensign of Bulgaria (1878–1944).svg"
   // (Wikimedia Commons); proportions 939 × 566.
   const flagGeo = new THREE.PlaneGeometry(1.45, .874, 16, 8), flagBase = flagGeo.attributes.position.array.slice();
+  const STAFF = { xa: -.6, y: 1.06 };
   {
     const tex = new THREE.TextureLoader().load(new URL('./ensign.png', import.meta.url).href); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 8;
     tex.repeat.x = -1; tex.offset.x = 1;   // the picture has the canton on the left; on the ship the hoist (staff) is at +x
-    const g = new THREE.Group(), xs = X(.32), y0 = deckY(.32, 0) - .02;
+    // The staff stands aft of the stern on an outrigger: two bars from the deck edges meet in a point 1.1 m
+    // aft of the hull, over the rudder, with a cross-piece for the staff (CAD, builder's drawing, coloured drawing).
+    const g = new THREE.Group(), xs = X(STAFF.xa), y0 = STAFF.y, e = edge(.5), tip = new V3(X(-1.1), STAFF.y - .02, 0), out = [];
+    for (const sd of [1, -1]) out.push(cylGeo(new V3(X(.5), e.h - .08, sd * (e.w - .04)), tip, .035, 8));
+    const zc = (e.w - .04) * (1 - (.5 - STAFF.xa) / 1.6);
+    out.push(cylGeo(new V3(xs, y0, -zc), new V3(xs, y0, zc), .035, 8), tf(new THREE.CylinderGeometry(.06, .06, .12, 12), [xs, y0 + .04, 0]));
+    g.add(mesh(mergeGeos(out), MAT.grey));
     g.add(mesh(cylGeo(new V3(xs, y0, 0), new V3(xs, y0 + 3.0, 0), .035, 10, .025), MAT.wood));
     g.add(mesh(tf(new THREE.SphereGeometry(.05, 12, 8), [xs, y0 + 3.03, 0]), MAT.brass));
     const flag = mesh(flagGeo, new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide, roughness: .85 }));
@@ -1248,7 +1270,7 @@ export function createDrazki({ registry, M, t }) {
       const tops = [], mids = [], net = { pos: [], uv: [], idx: [] }; let wingDone = false, gunDone = false;
       const GW = GUNS.find(G => G.sd === sd);
       // the rail is closed round the stern: both ropes start at the ensign staff
-      { const e = edge(.7), x = X(.32) + .03; tops.push(new V3(x, e.h + .88, 0)); mids.push(new V3(x, e.h + .47, 0)); }
+      { const e = edge(.7), x = X(STAFF.xa) + .03; tops.push(new V3(x, e.h + .88, 0)); mids.push(new V3(x, e.h + .47, 0)); }
       const xs = []; for (let xa = .7; xa < 37.3; xa += 1.25) xs.push(xa);
       for (const xa of xs) {
         const { yb, w, e } = railZ(xa);
@@ -1608,7 +1630,7 @@ export function createDrazki({ registry, M, t }) {
     mast: () => mastAt(8.2),
     funnels: () => new V3(X(22.9) - .2, FUN_TOP - .25, .45),
     shellHole: () => { const v = new V3(); shellHole.children[0].getWorldPosition(v); root.worldToLocal(v); return v; },
-    ensign: () => new V3(X(.32) - .745, deckY(.32, 0) + 2.52, 0),
+    ensign: () => new V3(X(STAFF.xa) - .745, STAFF.y + 2.54, 0),
     nameplate: () => onHull(35.25, 1.72, 1, .05).p,
     bulkheads: () => new V3(X(9.6), .3, .6),
     twinTubes: () => new V3(mount.position.x, mount.position.y + 1.4, 0),
