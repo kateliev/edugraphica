@@ -58,7 +58,7 @@ export const PARTS = [
   { id: 'bollards', group: 'deck', off: [0, 1.2, 0] },
   { id: 'rails', group: 'deck', off: [0, 1, 0] },
   { id: 'hatches', group: 'deck', off: [0, 1.6, 0] },
-  { id: 'dinghy', group: 'deck', off: [0, 2.6, -1.5], label: true },
+  { id: 'dinghy', group: 'deck', off: [0, 2.6, 0], label: true },
   { id: 'lifebuoys', group: 'deck', off: [0, 1.4, 0] },
   // life on board
   { id: 'crewQuarters', group: 'crew', off: [0, 5.5, 0], inside: true, label: true },

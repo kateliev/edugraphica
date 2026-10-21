@@ -812,7 +812,7 @@ export function createDrazki({ registry, M, t }) {
     g.add(mesh(mergeGeos(links), MAT.iron));
     add(root, 'bowSpar', g);
   }
-  // Spare torpedoes on deck, ready to load.
+  // Spare torpedo on deck, ready to load.
   const spareTorps = [];
   {
     const g = new THREE.Group();
@@ -823,7 +823,6 @@ export function createDrazki({ registry, M, t }) {
       g.add(tp); spareTorps.push(tp);
     };
     place(5.6, 10.6, 1.12);
-    place(22.3, 27.3, -1.38);
     add(root, 'torpedo', g);
   }
   // Torpedo davit: a small crane that swings a torpedo up into the tube.
@@ -892,7 +891,8 @@ export function createDrazki({ registry, M, t }) {
   // Aft steering position: a wheel on the stern deck. Its barrel winds two chains that run along the
   // deck, over guide sheaves, to the quadrant on the rudder head: turn the wheel and the rudder turns.
   {
-    const g = new THREE.Group(), xs = X(2.45), yd = deckY(2.45, 0) - .02, ya = yd + 1.0, yb = yd + .72;
+    // the wheel stands midway between the cage and the companion doors (owner; CAD plan, coloured drawing)
+    const XW = 5.2, g = new THREE.Group(), xs = X(XW), yd = deckY(XW, 0) - .02, ya = yd + 1.0, yb = yd + .72;
     const cast = [];
     for (const sd of [1, -1]) for (const dx of [-.26, .26]) cast.push(cylGeo(new V3(xs + dx, yd, sd * .17), new V3(xs, ya - .08, sd * .1), .035, 8));
     cast.push(tf(new THREE.BoxGeometry(.24, .26, .3), [xs, ya, 0]), tf(new THREE.BoxGeometry(.7, .04, .42), [xs, yd + .02, 0]));
@@ -912,15 +912,50 @@ export function createDrazki({ registry, M, t }) {
     // chains and sheaves
     const chain = [], sheaves = [];
     for (const sd of [1, -1]) {
-      const p0 = new V3(xs, yb - .09, sd * .16), p1 = new V3(xs - .02, yd + .1, sd * .2), p2 = new V3(X(1.25), deckY(1.25, .42) + .08, sd * .42);
+      const p0 = new V3(xs, yb - .09, sd * .16), p1 = new V3(xs - .02, yd + .1, sd * .2), p2 = new V3(X(1.25), deckY(1.25, .34) + .08, sd * .34);
       const p3 = new V3(xq + R * Math.cos(qa) + .02, yq, sd * (R * Math.sin(qa) + .02));
       chain.push(chainLinks([p0, p1, p1.clone().lerp(p2, .5).add(new V3(0, -.03, 0)), p2, p3], .02));
       for (const p of [p1, p2]) sheaves.push(tf(new THREE.CylinderGeometry(.065, .065, .05, 14), [p.x, p.y - .02, p.z]), tf(new THREE.BoxGeometry(.16, .04, .1), [p.x, p.y - .07, p.z]));
     }
     g.add(mesh(mergeGeos(chain), MAT.iron), mesh(mergeGeos(sheaves), MAT.dark));
-    // bell-shaped pedestal to port of the wheel (museum ship, CAD): its use is not known
+    // baluster pedestal with a flat round top just forward of the wheel stand (CAD): its use is not known
     const bell = new THREE.LatheGeometry([[0, 0], [.2, 0], [.2, .04], [.11, .14], [.1, .24], [.16, .42], [.17, .52], [.12, .72], [.08, .8], [.1, .86], [.2, .9], [.21, .96], [0, .97]].map(([r, h]) => new THREE.Vector2(r, h)), 28);
-    g.add(mesh(tf(bell, [X(2.3), deckY(2.3, .6) - .02, -.6]), MAT.grey));
+    g.add(mesh(tf(bell, [X(XW + .6), deckY(XW + .6, 0) - .02, 0]), MAT.grey));
+    // Cage on the port quarter (museum ship, CAD, coloured drawing): a horseshoe-shaped steel wall about
+    // 0.26 m high, round at the front and open at the back, with a shallow dish inside; over it a frame of
+    // bent tube - three hoops across and one along the top - also open at the back. Its use is not known.
+    {
+      const R = .36, T = .03, L = .56, hd = .26, xc = 2.73, zc = -.8, c = new V3(X(xc), deckY(xc, -zc) - .02, zc), cage = [];
+      const shoe = new THREE.Shape();   // plan: local x forward, shape y = −z
+      shoe.moveTo(-L, -R); shoe.lineTo(0, -R); shoe.absarc(0, 0, R, -Math.PI / 2, Math.PI / 2, false); shoe.lineTo(-L, R);
+      shoe.lineTo(-L, R - T); shoe.lineTo(0, R - T); shoe.absarc(0, 0, R - T, Math.PI / 2, -Math.PI / 2, true); shoe.lineTo(-L, -R + T); shoe.closePath();
+      cage.push(extrudeUp(shoe, 0, hd));
+      const rim = [];   // rolled top edge along the middle of the wall
+      for (let i = 0; i <= 6; i++) rim.push(new V3(-L + L * i / 6, hd, R - T / 2));
+      for (let i = 1; i < 24; i++) { const a = Math.PI / 2 - Math.PI * i / 24; rim.push(new V3(Math.cos(a) * (R - T / 2), hd, Math.sin(a) * (R - T / 2))); }
+      for (let i = 0; i <= 6; i++) rim.push(new V3(L * -i / 6, hd, -(R - T / 2)));
+      cage.push(tube(rim, .018, MAT.grey, 80).geometry);
+      const floor = new THREE.Shape(); floor.moveTo(-L, -R + T); floor.lineTo(0, -R + T); floor.absarc(0, 0, R - T, -Math.PI / 2, Math.PI / 2, false); floor.lineTo(-L, R - T); floor.closePath();
+      cage.push(extrudeUp(floor, .04, .02));
+      // bell profile of the frame: (half-width factor, height above the wall)
+      const prof = [[1, 0], [1.05, .28], [1.03, .55], [.91, .78], [.65, .96], [.3, 1.06], [0, 1.09]], r0 = R - T / 2, top = hd + 1.09;
+      for (const x of [0, -.27, -L + .02]) {   // hoops across
+        const pts = [];
+        for (const s of [1, -1]) { const half = prof.map(([f, h]) => new V3(x, hd + h, s * f * r0)); pts.push(...(s > 0 ? half : half.reverse().slice(1))); }
+        cage.push(tube(new THREE.CatmullRomCurve3(pts, false, 'centripetal'), .026, MAT.grey, 60).geometry);
+      }
+      const ridge = prof.map(([f, h]) => new V3(f * r0, hd + h, 0)).concat([new V3(-.27, top, 0), new V3(-L + .02, top, 0)]);   // up the front, aft along the top
+      cage.push(tube(polyCurve([ridge[ridge.length - 3], ...ridge.slice(-2)]), .026, MAT.grey, 6).geometry);
+      cage.push(tube(new THREE.CatmullRomCurve3(ridge.slice(0, -2), false, 'centripetal'), .026, MAT.grey, 40).geometry);
+      for (const x of [0, -.27, -L + .02]) cage.push(tf(new THREE.SphereGeometry(.034, 12, 8), [x, top, 0]));   // joints
+      g.add(mesh(tf(mergeGeos(cage), c.toArray()), MAT.grey));
+      const dish = new THREE.LatheGeometry([[0, .07], [.12, .08], [.2, .11], [.25, .16]].map(([r, h]) => new THREE.Vector2(r, h)), 32);
+      const dm = MAT.greyLight.clone(); dm.side = THREE.DoubleSide;
+      g.add(mesh(tf(dish, [c.x - .08, c.y, c.z]), dm));
+      g.add(mesh(tf(new THREE.CylinderGeometry(.03, .04, .06, 12), [c.x - .08, c.y + .07, c.z]), MAT.iron));   // dish stem
+    }
+    // Hatch abreast the cage on the starboard side, with three deck lights and a V handle (CAD plan, coloured drawing).
+    add(root, 'hatches', vHatch(2.12, .85, deckY(2.12, .85) - .02, .2, 0));
     add(root, 'aftWheel', g);
   }
   // Magazine below the conning tower: racks of 47 mm cartridges.
@@ -1212,6 +1247,8 @@ export function createDrazki({ registry, M, t }) {
     for (const sd of [1, -1]) {
       const tops = [], mids = [], net = { pos: [], uv: [], idx: [] }; let wingDone = false, gunDone = false;
       const GW = GUNS.find(G => G.sd === sd);
+      // the rail is closed round the stern: both ropes start at the ensign staff
+      { const e = edge(.7), x = X(.32) + .03; tops.push(new V3(x, e.h + .88, 0)); mids.push(new V3(x, e.h + .47, 0)); }
       const xs = []; for (let xa = .7; xa < 37.3; xa += 1.25) xs.push(xa);
       for (const xa of xs) {
         const { yb, w, e } = railZ(xa);
@@ -1282,29 +1319,49 @@ export function createDrazki({ registry, M, t }) {
     const sill = on(.05, .02); fit.push(tf(new THREE.BoxGeometry(.06, .08, .84), [sill.x, sill.y, 0], [0, 0, phi]));
     add(root, 'hatches', group(mesh(mergeGeos(gs), MAT.grey), mesh(mergeGeos(lids), MAT.greyLight), mesh(mergeGeos(doors), MAT.greyLight), mesh(mergeGeos(fit), MAT.brass)));
   }
-  // Ship's boat (a small dinghy) under a canvas cover, on chocks at the stern.
+  // Ship's boats: two small rowing boats, one on each side of the stern, turned on their sides and lashed
+  // against the hull at rail level - open side to the ship, bottom outboard - with crossed straps over the
+  // bottom (owner's coloured profile and plan; the builder's cutaway model has one on deck).
   {
-    const g = new THREE.Group(), L = 3.3, xa0 = 3.0, w0 = -1.02, y0 = deckY(4.6, w0) + .52;
+    const g = new THREE.Group(), L = 4.3, xa0 = 3.2, yc = 1.32;
     const hbD = s => .62 * Math.pow(Math.max(1 - Math.pow((s - .42) / (s < .42 ? .62 : .58), 2), 0), .55) + (s < .1 ? .08 * (1 - s / .1) : 0);
     const dep = s => .42 + .06 * (1 - s);
-    const hull = (u, v) => { const s = u, a = Math.PI * v; return [X(xa0) + s * L, y0 - Math.sin(a) * dep(s), w0 + Math.cos(a) * hbD(s)]; };
-    const cover = (u, v) => { const s = u, a = Math.PI * v; return [X(xa0) + s * L, y0 + Math.sin(a) * .16 * Math.min(1, hbD(s) * 3), w0 + Math.cos(a) * hbD(s) * 1.02]; };
     const grid = (fn, nu, nv, flip) => {
       const pos = [], idx = []; for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) pos.push(...fn(i / nu, j / nv));
       for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) { const a = j * (nu + 1) + i, b = a + 1, c = a + nu + 1, d = c + 1; flip ? idx.push(a, d, b, a, c, d) : idx.push(a, b, d, a, d, c); }
       const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gg.setIndex(idx); gg.computeVertexNormals(); return gg;
     };
+    // the gunwales lie just clear of the hull side and the rail stanchions over the boat's whole height
+    let wMax = 0; for (let i = 0; i <= 12; i++) for (let j = 0; j <= 6; j++) wMax = Math.max(wMax, hb(xa0 + L * i / 12, yc - .66 + 1.32 * j / 6), railZ(xa0 + L * i / 12).w + .03);
     const hm = MAT.white.clone(); hm.side = THREE.DoubleSide;
-    g.add(mesh(grid(hull, 30, 12, false), hm));
     const cm = MAT.canvas.clone(); cm.side = THREE.DoubleSide;
-    g.add(mesh(grid(cover, 30, 10, true), cm));
-    g.add(tube([0, .25, .5, .75, 1].map(f => new V3(X(xa0) + f * L, y0 + .01, w0 + hbD(f) * 1.04)), .03, MAT.wood, 40));
-    g.add(tube([0, .25, .5, .75, 1].map(f => new V3(X(xa0) + f * L, y0 + .01, w0 - hbD(f) * 1.04)), .03, MAT.wood, 40));
-    for (const s of [.28, .7]) {
-      const pts = []; for (let i = 0; i <= 12; i++) { const a = Math.PI * i / 12; pts.push(new V3(X(xa0) + s * L, y0 + Math.sin(a) * .17 * Math.min(1, hbD(s) * 3) + .01, w0 + Math.cos(a) * hbD(s) * 1.05)); }
-      g.add(tube(pts, .025, MAT.dark, 20));
-      g.add(mesh(tf(new THREE.BoxGeometry(.14, .5, 1.0), [X(xa0) + s * L, y0 - .5, w0]), MAT.wood));   // chocks
+    const wood = [], straps = [];
+    for (const sd of [1, -1]) {
+      const zg = sd * (wMax + .05);
+      // a: 0 … π round the section, from the upper gunwale over the keel (outboard) to the lower gunwale
+      const hull = (u, v) => { const a = Math.PI * v; return [X(xa0) + u * L, yc + Math.cos(a) * hbD(u), zg + sd * Math.sin(a) * dep(u)]; };
+      const cover = (u, v) => { const a = Math.PI * v; return [X(xa0) + u * L, yc + Math.cos(a) * hbD(u) * 1.02, zg - sd * Math.sin(a) * .03]; };
+      g.add(mesh(grid(hull, 30, 12, false), hm), mesh(grid(cover, 30, 6, true), cm));
+      { // transom: the flat stern of the boat, a fan of triangles across the end section
+        const rimPts = [...Array(13)].map((_, j) => hull(0, j / 12)).concat([...Array(7)].map((_, j) => cover(0, 1 - j / 6)));
+        const c = rimPts.reduce((m, q) => m.map((v, i) => v + q[i] / rimPts.length), [0, 0, 0]), pos = [];
+        for (let j = 0; j < rimPts.length; j++) pos.push(...c, ...rimPts[j], ...rimPts[(j + 1) % rimPts.length]);
+        const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); tg.computeVertexNormals();
+        g.add(mesh(tg, hm));
+      }
+      for (const k of [1, -1]) wood.push(tube([0, .25, .5, .75, 1].map(f => new V3(X(xa0) + f * L, yc + k * hbD(f) * 1.04, zg)), .03, MAT.wood, 40).geometry);   // gunwales
+      // crossed straps over the bottom, from the upper gunwale at one end to the lower one at the other
+      for (const [u0, u1] of [[.12, .88], [.88, .12]]) {
+        const pts = []; for (let i = 0; i <= 24; i++) { const t = i / 24, u = u0 + (u1 - u0) * t, a = Math.PI * t; pts.push(new V3(X(xa0) + u * L, yc + Math.cos(a) * (hbD(u) + .015), zg + sd * Math.sin(a) * (dep(u) + .015))); }
+        straps.push(tube(pts, .02, MAT.dark, 48).geometry);
+      }
+      for (const u of [.12, .88]) for (const k of [1, -1]) {   // lashings: up to the deck edge, down to the hull side
+        const xa = xa0 + u * L, y = yc + k * hbD(u) * 1.04, e = edge(xa);
+        const to = k > 0 ? new V3(X(xa), e.h - .02, sd * (e.w - .02)) : new V3(X(xa), y, sd * (hb(xa, y) - .02));
+        straps.push(cylGeo(new V3(X(xa), y, zg), to, .015, 6));
+      }
     }
+    g.add(mesh(mergeGeos(wood), MAT.wood), mesh(mergeGeos(straps), MAT.dark));
     add(root, 'dinghy', g);
   }
   // Lifebuoys on the rails.
