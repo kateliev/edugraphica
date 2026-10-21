@@ -300,16 +300,17 @@ export function createDrazki({ registry, M, t }) {
     let lo = ZM(xa), hi = e.h; for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; hb(xa, m) > w ? lo = m : hi = m; }
     return lo;
   };
+  // Perforated plate: round holes in staggered rows, about 6 cm apart (CAD close-ups); bridge wings and gun wings.
+  const gratTex = canvasTex(128, 128, (c, W) => {
+    c.fillStyle = '#8d959c'; c.fillRect(0, 0, W, W); c.globalCompositeOperation = 'destination-out';
+    for (let j = 0; j < 8; j++) for (let i = 0; i <= 8; i++) { c.beginPath(); c.arc((i + (j % 2) * .5) * W / 8, (j + .5) * W / 8, 4.2, 0, Math.PI * 2); c.fill(); }
+  }, false);
+  gratTex.wrapS = gratTex.wrapT = THREE.RepeatWrapping; gratTex.repeat.set(2, 2); gratTex.anisotropy = 8;
+  const MAT_PERF = new THREE.MeshStandardMaterial({ map: gratTex, alphaTest: .5, side: THREE.DoubleSide, roughness: .6, metalness: .4 });
+  const MAT_PLATE = MAT.grey.clone(); MAT_PLATE.side = THREE.DoubleSide;
   {
     const g = new THREE.Group(), xs = []; for (let xa = WING.xa0; xa <= WING.xa1 + 1e-6; xa += .1) xs.push(xa);
-    // perforated plate: round holes in staggered rows, about 6 cm apart (CAD close-ups)
-    const gratTex = canvasTex(128, 128, (c, W) => {
-      c.fillStyle = '#8d959c'; c.fillRect(0, 0, W, W); c.globalCompositeOperation = 'destination-out';
-      for (let j = 0; j < 8; j++) for (let i = 0; i <= 8; i++) { c.beginPath(); c.arc((i + (j % 2) * .5) * W / 8, (j + .5) * W / 8, 4.2, 0, Math.PI * 2); c.fill(); }
-    }, false);
-    gratTex.wrapS = gratTex.wrapT = THREE.RepeatWrapping; gratTex.repeat.set(2, 2); gratTex.anisotropy = 8;
-    const gm = new THREE.MeshStandardMaterial({ map: gratTex, alphaTest: .5, side: THREE.DoubleSide, roughness: .6, metalness: .4 });
-    const pm = MAT.grey.clone(); pm.side = THREE.DoubleSide;
+    const gm = MAT_PERF, pm = MAT_PLATE;
     const ribs = [], bw = [];
     for (const sd of [1, -1]) {
       // plan outline: inner edge (stepping in at the front of the tower), front, outer edge back to the tower
@@ -850,18 +851,42 @@ export function createDrazki({ registry, M, t }) {
     top.add(mesh(tf(new THREE.TorusGeometry(.08, .012, 6, 16), [-.15, -.05, -.22], [0, 0, 0]), MAT.iron));   // elevating wheel
     return g;
   }
-  // The boat's one 47 mm gun stands on a small sponson on the starboard side, between the funnels just
-  // forward of the cowl (museum ship). The rail and its net bulge out round the sponson, under the gun.
-  const SPON = { xa: 22.35, sd: 1, r: .55 };
-  { const e = edge(SPON.xa); SPON.y = e.h - .02; SPON.zc = e.w + .02; }
+  // Two 47 mm guns, opposite each other between the forward funnel and the conning tower (CAD reconstruction,
+  // Draganov 2025; owner; the builder's drawing has a gun at xa 24.45). Each stands half on the hull, half on a
+  // narrow rectangular wing of perforated plate that sticks out 0.3 m from the hull side a little below the
+  // deck edge, carried on triangular knees; the rail runs round the wing's outer edge.
+  const GUNS = [1, -1].map(sd => ({ sd, xa0: 22.7, xa1: 25.85, xg: 24.88 }));
+  for (const G of GUNS) {
+    G.y = edge((G.xa0 + G.xa1) / 2).h - .1;
+    G.zo = Math.max(hb(G.xa0, G.y), hb(G.xa1, G.y)) + .3;   // outer edge, straight
+  }
+  const gunWingIn = (G, xa) => hb(xa, G.y) - .03;
   {
-    const g = new THREE.Group(), z = SPON.sd * SPON.zc, xs = X(SPON.xa);
-    g.add(mesh(tf(new THREE.CylinderGeometry(SPON.r, SPON.r, .05, 40), [xs, SPON.y - .025, z]), MAT.grey));   // platform
-    const rim = []; for (let i = 0; i <= 20; i++) { const a = -Math.PI / 2 + Math.PI * i / 20; rim.push(new V3(xs + Math.sin(a) * SPON.r, SPON.y + .02, SPON.sd * (SPON.zc + Math.cos(a) * SPON.r))); }
-    g.add(tube(rim, .025, MAT.grey, 30));
-    for (const dx of [-.3, .3]) { const p = onHull(SPON.xa + dx, SPON.y - .55, SPON.sd).p; g.add(mesh(cylGeo(p, new V3(xs + dx, SPON.y - .05, z + SPON.sd * .35), .03, 8), MAT.grey)); }   // brackets
-    const fg = gun47(); fg.position.set(xs, SPON.y, z); fg.rotation.y = -deg(40) * SPON.sd;
-    g.add(fg);
+    const g = new THREE.Group(), ribs = [], rims = [];
+    for (const G of GUNS) {
+      const { sd, y } = G, pts = [];
+      for (let xa = G.xa0; xa <= G.xa1 + 1e-6; xa += .15) pts.push([xa, gunWingIn(G, xa)]);
+      pts.push([G.xa1, G.zo], [G.xa0, G.zo]);
+      const sh = new THREE.Shape(); pts.forEach(([xa, z], i) => (i ? sh.lineTo(X(xa), -sd * z) : sh.moveTo(X(xa), -sd * z))); sh.closePath();
+      const pg = new THREE.ShapeGeometry(sh); pg.rotateX(-Math.PI / 2); pg.translate(0, y, 0);
+      g.add(mesh(pg, MAT_PERF));
+      const rim = [[G.xa0, gunWingIn(G, G.xa0)], [G.xa0, G.zo], [G.xa1, G.zo], [G.xa1, gunWingIn(G, G.xa1)]].map(([xa, z]) => new V3(X(xa), y - .02, sd * z));
+      rims.push(tube(polyCurve(rim), .026, MAT.grey, 12).geometry);
+      // knees: triangular plates from the wing's outer edge down to the hull side, one lightening hole each
+      for (let i = 0; i < 4; i++) {
+        const xa = G.xa0 + .2 + (G.xa1 - G.xa0 - .4) * i / 3;
+        const zi = gunWingIn(G, xa), yl = y - .5, zl = hb(xa, yl) - .02, k = new THREE.Shape();
+        k.moveTo(zi, y - .03); k.lineTo(G.zo - .03, y - .03); k.lineTo(zl, yl); k.closePath();
+        k.holes.push(new THREE.Path().absarc(zi + (G.zo - zi) * .42, y - .15, .035, 0, Math.PI * 2, true));
+        const kg = new THREE.ExtrudeGeometry(k, { depth: .012, bevelEnabled: false });
+        kg.rotateY(-Math.PI / 2); kg.translate(X(xa) + .006, 0, 0);
+        if (sd < 0) kg.scale(1, 1, -1);
+        ribs.push(kg);
+      }
+      const gun = gun47(); gun.position.set(X(G.xg), y, sd * hb(G.xg, y)); gun.rotation.y = -sd * deg(8);   // half on the hull, half on the wing; trained forward
+      g.add(gun); G.gun = gun;
+    }
+    g.add(mesh(mergeGeos(ribs.concat(rims)), MAT_PLATE));
     add(root, 'foreGun', g);
   }
   // Aft steering position: a wheel on the stern deck. Its barrel winds two chains that run along the
@@ -1037,9 +1062,10 @@ export function createDrazki({ registry, M, t }) {
     telegraphTex.needsUpdate = true;
   }
   drawTelegraph();
+  // It stands inside the conning tower, in the port forward corner beside the wheel (owner's notes), dials to the sides.
   {
-    const g = new THREE.Group(), x = X(25.45), w = .58, y0 = deckY(25.45, w) - .02;
-    g.position.set(x, y0, w);
+    const g = new THREE.Group(), x = X(26.9), w = -.5, y0 = CT.y0 + .05;
+    g.position.set(x, y0, w); g.scale.setScalar(.9);
     g.add(mesh(new THREE.LatheGeometry([[0, 0], [.14, 0], [.09, .06], [.06, .9], [.09, 1.0], [0, 1.0]].map(([a, b]) => new THREE.Vector2(a, b)), 20), MAT.brass));
     const head = mesh(tf(new THREE.CylinderGeometry(.24, .24, .16, 32), [0, 1.2, 0], [Math.PI / 2, 0, 0]), MAT.brass);
     g.add(head);
@@ -1184,7 +1210,8 @@ export function createDrazki({ registry, M, t }) {
     const netMat = new THREE.MeshStandardMaterial({ map: netTex, transparent: true, depthWrite: false, side: THREE.DoubleSide, roughness: 1 });
     const sag = (pts, d) => { const out = []; pts.forEach((p, i) => { if (i) out.push(p.clone().lerp(pts[i - 1], .5).add(new V3(0, -d, 0))); out.push(p); }); return out; };
     for (const sd of [1, -1]) {
-      const tops = [], mids = [], net = { pos: [], uv: [], idx: [] }; let wingDone = false;
+      const tops = [], mids = [], net = { pos: [], uv: [], idx: [] }; let wingDone = false, gunDone = false;
+      const GW = GUNS.find(G => G.sd === sd);
       const xs = []; for (let xa = .7; xa < 37.3; xa += 1.25) xs.push(xa);
       for (const xa of xs) {
         const { yb, w, e } = railZ(xa);
@@ -1197,12 +1224,13 @@ export function createDrazki({ registry, M, t }) {
           }
           continue;
         }
-        if (sd === SPON.sd && Math.abs(xa - SPON.xa) < SPON.r + .2) {   // round the gun sponson
-          for (const f of [-70, -25, 25, 70]) {
-            const a = deg(f), R = SPON.r - .04, x = SPON.xa + Math.sin(a) * R, z = sd * (SPON.zc + Math.cos(a) * R);
-            const tp = new V3(X(x), SPON.y + .92, z);
-            stan.push(cylGeo(new V3(X(x), SPON.y, z), tp, .022, 8)); tops.push(tp.clone().add(new V3(0, -.04, 0))); mids.push(new V3(X(x), SPON.y + .47, z));
-            const k = net.pos.length / 3; net.pos.push(X(x), SPON.y + .01, z, X(x), tp.y - .05, z); net.uv.push(x / .8, 0, x / .8, (tp.y - .06 - SPON.y) / .8);
+        if (xa > GW.xa0 - .45 && xa < GW.xa1 + .45) {   // posts along the outer edge of the gun wing
+          if (gunDone) continue; gunDone = true;
+          const n = Math.round((GW.xa1 - GW.xa0) / .7);
+          for (let i = 0; i <= n; i++) {
+            const x = GW.xa0 + .05 + (GW.xa1 - GW.xa0 - .1) * i / n, z = sd * (GW.zo - .03), tp = new V3(X(x), e.h + .92, z);
+            stan.push(cylGeo(new V3(X(x), GW.y - .03, z), tp, .022, 8)); tops.push(tp.clone().add(new V3(0, -.04, 0))); mids.push(new V3(X(x), e.h + .47, z));
+            const k = net.pos.length / 3; net.pos.push(X(x), GW.y + .01, z, X(x), tp.y - .05, z); net.uv.push(x / .8, 0, x / .8, (tp.y - .06 - GW.y) / .8);
             if (k) net.idx.push(k - 2, k, k - 1, k - 1, k, k + 1);
           }
           continue;
@@ -1527,6 +1555,7 @@ export function createDrazki({ registry, M, t }) {
     nameplate: () => onHull(35.25, 1.72, 1, .05).p,
     bulkheads: () => new V3(X(9.6), .3, .6),
     twinTubes: () => new V3(mount.position.x, mount.position.y + 1.4, 0),
+    foreGun: () => GUNS[0].gun.position.clone().add(new V3(0, 1.15, 0)),
     torpedo: () => new V3(X(8.1), deckY(8.1, 1.12) + .55, 1.12),
     bowTube: () => new V3(X(38.2), 1.42, 0),
     anchors: () => new V3(X(32.85), deckY(32.85, .82) + .15, .82),
