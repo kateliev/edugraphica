@@ -52,6 +52,9 @@ Units: metres. `xa` = distance forward of the stern; height above the waterline.
 | Guns | forward on the boiler casing at xa 24.45; aft at xa 2.35 |
 | Searchlight | on the forecastle at xa 29.35 |
 | Bulkheads | xa 4.0, 9.6, 16.8, 25.6, 28.2, 35.2 |
+| Funnel casings | aft xa 17.0–20.15, 1.8 wide, top 1.98 above WL; forward xa 21.85–24.3; the stokehold hatch and the ventilator stand in the gap (CAD plan, Draganov 2025) |
+| Engine-room skylight | xa 12.62–17.05, 1.8 wide, top 1.84 (a step below the aft casing, which it butts onto). Flat hatches from aft: 0.98 m (3 + 3 deck lights), 0.78 m (2 + 2, spaced out), 0.6 m (2 + 2, close together), each 1.5 m wide; V-handle hatch (0.7 × 0.66, three deck lights) in the forward starboard corner; a second one on the deck at xa 12.24, starboard, V pointing inboard (CAD plan, measured at ≈ 40 px/m). The CAD shows the skylight ≈ 0.15 m to starboard of the centreline, and the model follows it (its starboard side stands 0.15 m out past the aft casing) |
+| Ventilator | plain round pipe Ø 0.84 with a quarter bend, a short lip and a rolled rim (owner's notes) |
 
 ## Approximations and choices
 

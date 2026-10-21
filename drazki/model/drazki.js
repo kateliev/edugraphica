@@ -446,41 +446,58 @@ export function createDrazki({ registry, M, t }) {
   /* =====================================================================
      DECK STRUCTURES: casings, skylight
      ===================================================================== */
-  const CASE_TOP = 1.98;
+  const CASE_TOP = 1.98, SKY_TOP = 1.84;
   {
-    // boiler-room casing in two parts, one round each funnel base: the aft part is about twice as long
-    add(root, 'deck', mesh(mergeGeos([extrudeUp(rrShape(X(17.0), -.78, X(21.25), .78, .32), 1.38, CASE_TOP - 1.38, .03),
+    // boiler-room casing in two parts, one round each funnel base, well apart (CAD plan, Draganov 2025):
+    // the aft part is square at its aft end, where the lower engine-room skylight butts onto it
+    add(root, 'deck', mesh(mergeGeos([extrudeUp(roundRect(X(17.0), -.9, X(20.15), .9, .06, .32, .32, .06), 1.38, CASE_TOP - 1.38, .03),
       extrudeUp(rrShape(X(21.85), -.78, X(24.3), .78, .45), 1.38, CASE_TOP - 1.38, .03)]), MAT.grey));
     // stokehold hatch between the two parts, down on the deck: a low coaming and a lid
     const yh = deckY(21.55, 0) - .03;
     add(root, 'hatches', group(mesh(extrudeUp(rrShape(X(21.3), -.36, X(21.8), .36, .05), yh, .13), MAT.grey),
       mesh(extrudeUp(rrShape(X(21.27), -.39, X(21.83), .39, .06), yh + .13, .04, .015), MAT.greyLight)));
   }
+  // Deck light: a round glass set flush in a hatch lid, in a brass ring.
+  function deckLight(x, y, z, rims, glass, r = .07) {
+    rims.push(tf(new THREE.TorusGeometry(r, .014, 6, 20), [x, y + .004, z], [Math.PI / 2, 0, 0]));
+    glass.push(tf(new THREE.CircleGeometry(r - .004, 20), [x, y + .002, z], [-Math.PI / 2, 0, 0]));
+  }
+  // Small hatch with three deck lights and a V-shaped grab handle (CAD plan): the apex of the V points
+  // to local −x; two lights stand outside the V level with the apex, the third between the arms.
+  function vHatch(xa, z, y0, coaming, rotY) {
+    const g = new THREE.Group(), L = .7, W = .66, yl = coaming + .035, rims = [], glass = [];
+    g.add(mesh(extrudeUp(rrShape(-L / 2 + .03, -W / 2 + .03, L / 2 - .03, W / 2 - .03, .04), 0, coaming), MAT.grey));
+    g.add(mesh(extrudeUp(rrShape(-L / 2, -W / 2, L / 2, W / 2, .05), coaming, .035, .01), MAT.grey));
+    for (const [x, zz] of [[-.18, .16], [-.18, -.16], [.17, 0]]) deckLight(x, yl, zz, rims, glass);
+    const h = .045, ax = -.15, ex = .31, ez = .21;   // the handle: a round bar on short feet
+    const bar = [[ex, 0, ez], [ex, h, ez], [ax, h, 0], [ex, h, -ez], [ex, 0, -ez]].map(([x, y, zz]) => new V3(x, yl + y, zz));
+    g.add(tube(polyCurve(bar), .012, MAT.iron, 24));
+    g.add(mesh(cylGeo(new V3(ax, yl, 0), new V3(ax, yl + h, 0), .012, 8), MAT.iron));
+    g.add(mesh(mergeGeos(rims), MAT.brass), mesh(mergeGeos(glass), MAT.glass));
+    g.position.set(X(xa), y0, z); g.rotation.y = rotY;
+    return g;
+  }
+  const ST = { xa0: 12.62, xa1: 17.05, hw: .9, z: .15 };   // the CAD plan has it 0.15 m to starboard of the centreline
   {
-    // engine-room skylight: a low casing, plain steel over its aft quarter, then three raised hatches
-    // with sloping sides and small windows in them (CAD reconstruction, Draganov 2025)
-    const g = new THREE.Group(), y1 = 1.96, ST = { xa0: 12.4, xa1: 16.3, hw: .7 };
-    g.add(mesh(extrudeUp(rrShape(X(ST.xa0), -ST.hw, X(ST.xa1), ST.hw, .12), 1.36, y1 - 1.36, .03), MAT.grey));
-    const lids = [], rims = [], glass = [], L = .86, B = 1.2, H = .22, k = .72;
-    const x0 = ST.xa0 + (ST.xa1 - ST.xa0) / 4;
-    for (let i = 0; i < 3; i++) {
-      const xa = x0 + .5 + i * .96;
-      const lid = new THREE.CylinderGeometry(Math.SQRT1_2 * k, Math.SQRT1_2, H, 4, 1); lid.rotateY(Math.PI / 4); lid.scale(L, 1, B); lid.translate(X(xa), y1 + H / 2, 0);
-      lids.push(lid.toNonIndexed());
-      // two windows in each long sloping side
-      const ny = (B - B * k) / 2, n = new V3(0, ny, H).normalize();
-      for (const sd of [1, -1]) for (const dx of [-.2, .2]) {
-        const nn = new V3(0, n.y, sd * n.z), p = new V3(X(xa) + dx, y1 + H / 2, sd * (B * (1 + k) / 4)).addScaledVector(nn, .006);
-        const q = new THREE.Quaternion().setFromUnitVectors(new V3(0, 0, 1), nn);
-        const r = new THREE.TorusGeometry(.05, .012, 6, 16); r.applyMatrix4(M4.compose(p, q, new V3(1, 1, 1))); rims.push(r);
-        const c = new THREE.CircleGeometry(.048, 16); c.applyMatrix4(M4.compose(p.clone().addScaledVector(nn, -.003), q, new V3(1, 1, 1))); glass.push(c);
-      }
-      rims.push(tf(new THREE.TorusGeometry(.05, .012, 6, 14, Math.PI), [X(xa), y1 + H, 0], [0, Math.PI / 2, 0]));   // lifting handle
+    // Engine-room skylight (CAD plan, Draganov 2025): a low casing that runs on into the aft boiler casing,
+    // a step lower. On its top, from aft: three flat hatches as wide as the skylight, each a different length,
+    // with round deck lights along their side edges (3 + 3, 2 + 2 spaced out, 2 + 2 close together);
+    // then plain plate, with a small V-handle hatch in the forward starboard corner.
+    const g = new THREE.Group(), rims = [], glass = [], lids = [], HW = .74, yl = SKY_TOP + .04;
+    g.add(mesh(extrudeUp(roundRect(X(ST.xa0), -ST.hw, X(ST.xa1), ST.hw, .12, 0, 0, .12), 1.36, SKY_TOP - 1.36, .03), MAT.grey));
+    const HATCHES = [{ xa: 12.67, L: .98, dx: [-.35, 0, .35] }, { xa: 13.76, L: .78, dx: [-.225, .225] }, { xa: 14.64, L: .6, dx: [-.1, .1] }];
+    for (const { xa, L, dx } of HATCHES) {
+      const xc = X(xa + L / 2);
+      lids.push(extrudeUp(rrShape(X(xa), -HW, X(xa + L), HW, .05), SKY_TOP, .04, .012));
+      for (const d of dx) for (const z of [-.6, .6]) deckLight(xc + d, yl, z, rims, glass);
     }
-    const lm = MAT.grey.clone(); lm.flatShading = true;
-    g.add(mesh(mergeGeos(lids), lm), mesh(mergeGeos(rims), MAT.brass), mesh(mergeGeos(glass), MAT.glass));
+    g.add(mesh(mergeGeos(lids), MAT.grey), mesh(mergeGeos(rims), MAT.brass), mesh(mergeGeos(glass), MAT.glass));
+    g.add(vHatch(16.07, .44, SKY_TOP, .03, 0));
+    g.position.z = ST.z;
     add(root, 'skylight', g);
   }
+  // The same small hatch on the deck, just aft of the skylight and under the twin tube, its V pointing inboard.
+  add(root, 'hatches', vHatch(12.24, .71, deckY(12.24, .71) - .02, .14, -Math.PI / 2));
 
   /* =====================================================================
      FUNNELS AND THE SHELL HOLE
@@ -529,22 +546,24 @@ export function createDrazki({ registry, M, t }) {
      VENTILATORS (cowls): they catch the wind and push air down to the
      boiler fires and the engine room. Red inside, as on the museum ship.
      ===================================================================== */
+  // A plain round pipe of one width all the way: up from the deck, a quarter bend at the top, a short
+  // straight lip and a rolled rim round the mouth (owner's notes).
   function cowl(xa, w, r, height, facing) {
-    const g = new THREE.Group(), R = r * 1.25, y0 = deckY(xa, w) - .05;
-    g.add(mesh(tf(new THREE.CylinderGeometry(r, r * 1.08, height, 20), [0, height / 2, 0]), MAT.grey));
-    const bend = tf(new THREE.TorusGeometry(R, r, 14, 20, Math.PI / 2), [R, height, 0], [0, 0, Math.PI / 2]);
-    g.add(mesh(bend, MAT.grey), mesh(bend.clone(), MAT.shaft));   // dark inside: the duct runs down into the ship
-    const bell = new THREE.LatheGeometry([[r, 0], [r * 1.12, r * .4], [r * 1.45, r * .8], [r * 1.75, r * 1.05]].map(([a, b]) => new THREE.Vector2(a, b)), 24);
-    bell.rotateZ(-Math.PI / 2); bell.translate(R, height + R, 0);
-    g.add(mesh(bell, MAT.grey), mesh(bell.clone(), MAT.redPaint));
-    // throat: where the red mouth meets the pipe the duct turns down out of sight, so it reads as a dark void
-    const throat = new THREE.CircleGeometry(r * 1.02, 24); throat.rotateY(Math.PI / 2); throat.translate(R + r * .12, height + R, 0);
-    g.add(mesh(throat, MAT.void));
+    const g = new THREE.Group(), R = r * 1.2, lip = .1, y0 = deckY(xa, w) - .05, yc = height + R;
+    g.add(mesh(tf(new THREE.CylinderGeometry(r, r, height, 32, 1, true), [0, height / 2, 0]), MAT.grey));
+    g.add(mesh(tf(new THREE.CylinderGeometry(r + .04, r + .05, .1, 32), [0, .07, 0]), MAT.grey));   // flange on the deck
+    const bend = tf(new THREE.TorusGeometry(R, r, 20, 24, Math.PI / 2), [R, height, 0], [0, 0, Math.PI / 2]);
+    const mouth = tf(new THREE.CylinderGeometry(r, r, lip, 32, 1, true), [R + lip / 2, yc, 0], [0, 0, Math.PI / 2]);
+    g.add(mesh(mergeGeos([bend, mouth]), MAT.grey), mesh(mergeGeos([bend.clone(), mouth.clone()]), MAT.redPaint));   // red inside
+    g.add(mesh(tf(new THREE.TorusGeometry(r + .012, .032, 10, 40), [R + lip, yc, 0], [0, Math.PI / 2, 0]), MAT.grey));   // rolled rim
+    // where the bend turns down the duct runs on into the ship out of sight: a dark void
+    g.add(mesh(tf(new THREE.CircleGeometry(r * .99, 32), [0, height + .02, 0], [-Math.PI / 2, 0, 0]), MAT.void));
     g.position.set(X(xa), y0, w); g.rotation.y = facing;
     return g;
   }
-  // One cowl, on the starboard side by the stokehold hatch, its mouth turned inboard (to port).
-  add(root, 'ventilators', cowl(21.55, 1.08, .24, 1.15, Math.PI / 2));
+  // One ventilator, on the starboard side by the stokehold hatch, its mouth turned inboard (to port).
+  // As wide as the mouth of the old trumpet cowl.
+  add(root, 'ventilators', cowl(21.55, 1.08, .42, 1.0, Math.PI / 2));
 
   /* =====================================================================
      MACHINERY: boilers, coal bunkers, engine, condenser, shaft, propeller, rudder
