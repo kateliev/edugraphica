@@ -76,15 +76,17 @@ startExplorer({ site: 'drazki', ns: 'ship', createModel, parts: PARTS, groups: G
 | `root` | the THREE.Group of the model; metres; +x forward, +y up (0 = waterline), +z right (starboard) |
 | `waterline` | `{x0, x1, hb[]}` footprint at the waterline, so the water is hidden inside the hull |
 | `floorY`, `home` | studio floor height; home camera `{pos, target}` |
-| `stage` | options for the scene: `scale` (1 = dinghy, 4.5 = Drazki: scenery, fog, waves and shadows grow), camera `view` limits, `shadowMap`, `palette` (base sky, sea and light), `palettes` (scene colour presets; with two or more the toolbar shows swatches, names in `looks.<key>`), `scenery: false` (no default islands and clouds; the model adds its own backdrop to `stage.scenery` and recolours it with `stage.onPalette`) |
+| `stage` | options for the scene: `scale` (1 = dinghy, 4.5 = Drazki: scenery, fog, waves and shadows grow), camera `view` limits, `shadowMap`, `waterAlpha` (how opaque the sea is next to the model; default 0.56), `palette` (base sky, sea and light), `palettes` (scene colour presets; with two or more the toolbar shows swatches, names in `looks.<key>`), `scenery: false` (no default islands and clouds; the model adds its own backdrop to `stage.scenery` and recolours it with `stage.onPalette`) |
 | `controls` | toolbar controls the model adds: `range` (slider with a readout), `toggle`, `button` |
 | `update(time, dt, state)` | animation step |
 | `anchor`, `labelHidden`, `onMode`, `bindUI`, `redraw` | optional hooks (label positions, hiding labels, scene changes, UI access, repaint after fonts load) |
 
 Large plain surfaces get procedural **surface noise** from `assets/js/explorer/surface.js`:
-`addSurfaceNoise(material, { mottle, grain, color, rough, bump })` adds soft colour/gloss patches and a fine
-grain computed in the shader from the mesh's own coordinates (no textures, no UVs). Add `?noise=0` to the
-address to compare without it; `window.edugraphica.noise.value` (0…1) changes it live.
+`addSurfaceNoise(material, { mottle, color, rough, wave, waveFreq, dent, dentFreq, streak, streakFreq, peel, peelFreq, peelRough })`
+adds soft gloss patches, a gentle waviness of the plating and smaller dents (seen only in highlights and
+reflections), faint vertical weathering streaks on upright faces, and a fine orange peel that turns into roughness when it is smaller than a pixel. It is computed in the shader from the mesh's
+own coordinates (no textures, no UVs). Add `?noise=0` to the address to compare without it;
+`window.edugraphica.noise.value` (0…1) changes it live.
 
 Register every mesh with `registry.add(parent, partId, object, options)`. Each part gets its own
 material copies, so it can glow when selected and fade when another part is selected. Part ids must

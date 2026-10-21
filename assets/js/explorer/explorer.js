@@ -23,7 +23,7 @@ import { createStage } from './stage.js';
 import { createRegistry } from './registry.js';
 import { createUI } from './ui.js';
 import { displayFont } from './geometry.js';
-import { SURFACE_NOISE } from './surface.js';
+import { SURFACE_NOISE, SURFACE_RELIEF } from './surface.js';
 
 export async function startExplorer({ site, ns, createModel, parts, groups, paints = [] }) {
   const lang = pickLang(), glossLang = pickGloss(lang);
@@ -51,6 +51,8 @@ export async function startExplorer({ site, ns, createModel, parts, groups, pain
   stage.setFloor(model.floorY);
   if (model.shadowSize) stage.setShadowSize(model.shadowSize);
   model.attach?.(stage);
+  stage.applyEnvI();   // the start palette's reflection strength, now that the model's materials are in the scene
+  stage.onPalette(p => { SURFACE_RELIEF.value = p.relief; });   // how clearly the surface relief shows in this light
 
   const ui = createUI({ stage, registry, model, state, S, W, M, G, parts, groups, paints, lang });
   const mo = { heave: .012, pitch: .01, roll: .018, ...model.motion };   // roll = about the length (x), pitch = about the beam (z)

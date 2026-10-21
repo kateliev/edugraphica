@@ -13,11 +13,14 @@ export const COL = { top: '#2c82cf', mid: '#8fc9ee', horizon: '#d6ecf8', deep: '
 const HB_N = 32;   // waterline samples passed to the water shader
 
 // Light of a scene besides COL; a palette may override any of these keys too.
-const LIGHT = { sun: '#fff3df', sunI: 2.1, sunDir: [5, 8, 4.5], hemiSky: '#dff1ff', hemiGround: '#2c5d74', hemiI: .35, envGround: '#2f6f8f',
+// envI scales the sky reflections on the model (each material keeps its own envMapIntensity as the base);
+// relief scales the surface relief of surface.js (the explorer applies it).
+const LIGHT = { sun: '#fff3df', sunI: 2.1, sunDir: [5, 8, 4.5], hemiSky: '#dff1ff', hemiGround: '#2c5d74', hemiI: .35, envGround: '#2f6f8f', envI: 1, relief: 1,
   exposure: 1, glow: '#ffffff', glowA: 0, clouds: 0, cloudC: '#ffffff', cloudS: '#9aa9b6' };
 
 // opts: { scale = 1, view: { minDistance, maxDistance, fov }, marks = false, scenery = true, shadowMap = 2048,
-//         palette: { …COL/LIGHT keys }, palettes: [{ key, …COL/LIGHT keys }] }
+//         waterAlpha = .56, palette: { …COL/LIGHT keys }, palettes: [{ key, …COL/LIGHT keys }] }
+//   waterAlpha: how opaque the sea is next to the model (lower shows more of the hull under water).
 //   palette overrides the base sky, sea and light (e.g. a darker sea). palettes are presets on top of
 //   that base (the first one is the start): setPalette(key) switches, onPalette(fn) lets a model
 //   recolour its own scenery. scenery: false leaves out the islands and clouds.
@@ -95,13 +98,13 @@ export function createStage(canvas, opts = {}) {
     uTime: { value: 0 }, uDeep: { value: new THREE.Color(C.deep) }, uShallow: { value: new THREE.Color(C.shallow) },
     uSkyC: { value: new THREE.Color(C.skyRefl) }, uHorizon: { value: new THREE.Color(C.horizon) }, uSun: { value: SUN },
     uBoatInv: { value: new THREE.Matrix4() }, uHB: { value: new Array(HB_N).fill(0) }, uX0: { value: 0 }, uX1: { value: 0 },
-    uK: { value: k }, uRK: { value: rk },
+    uK: { value: k }, uRK: { value: rk }, uA: { value: opts.waterAlpha ?? .56 },
   };
   const water = new THREE.Mesh(new THREE.PlaneGeometry(1600 * k, 1600 * k, 1, 1), new THREE.ShaderMaterial({
     uniforms: waterUniforms, transparent: true, depthWrite: false,
     vertexShader: `varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
     fragmentShader: `
-      uniform float uTime; uniform vec3 uDeep, uShallow, uSkyC, uHorizon, uSun; uniform mat4 uBoatInv; uniform float uHB[${HB_N}]; uniform float uX0, uX1, uK, uRK;
+      uniform float uTime; uniform vec3 uDeep, uShallow, uSkyC, uHorizon, uSun; uniform mat4 uBoatInv; uniform float uHB[${HB_N}]; uniform float uX0, uX1, uK, uRK, uA;
       varying vec3 vW;
       float hbAt(float x){
         float f = clamp((x - uX0) / max(uX1 - uX0, 1e-4), 0.0, 1.0) * ${HB_N - 1}.0; int i = int(floor(f)); int j = i + 1; if (j > ${HB_N - 1}) j = ${HB_N - 1};
@@ -133,7 +136,7 @@ export function createStage(canvas, opts = {}) {
         float foam = (1.0 - smoothstep(0.0, 0.07 * uRK, d)) * (0.6 + 0.4 * sin(uTime * 2.3 + (bl.x * 23.0 + bl.z * 13.0) / uRK));
         col = mix(col, vec3(0.94, 0.97, 1.0), foam * 0.7);
         col = mix(col, uHorizon, smoothstep(40.0 * uK, 420.0 * uK, length(vW.xz)));
-        float a = mix(0.56, 1.0, smoothstep(1.4 * uK, 7.0 * uK, length(vW.xz)));
+        float a = mix(uA, 1.0, smoothstep(1.4 * uK, 7.0 * uK, length(vW.xz)));
         a = max(a, foam * 0.75);
         gl_FragColor = vec4(col, a);
         #include <tonemapping_fragment>
@@ -213,7 +216,13 @@ export function createStage(canvas, opts = {}) {
     sun.color.set(p.sun); sun.intensity = p.sunI; sun.position.copy(SUN).multiplyScalar(14 * k);
     renderer.toneMappingExposure = p.exposure;
     envRT?.dispose(); envRT = pmrem.fromScene(envScene, .04); scene.environment = envRT.texture;
+    applyEnvI();
     paletteHooks.forEach(f => f(p));
+  }
+  function applyEnvI() {   // also called by the explorer once the model is in the scene
+    scene.traverse(o => { for (const m of o.isMesh ? [].concat(o.material) : []) if ('envMapIntensity' in m) {
+      m.userData.envBase ??= m.envMapIntensity; m.envMapIntensity = m.userData.envBase * palette.envI;
+    } });
   }
   function onPalette(fn) { paletteHooks.push(fn); fn(palette); }
   setPalette(palettes[0].key);
@@ -225,5 +234,5 @@ export function createStage(canvas, opts = {}) {
   }
 
   return { renderer, scene, camera, controls, sun, scenery, scale: k, palettes, get palette() { return palette; },
-    setWaterline, setFloor, setShadowSize, setMode, setPalette, onPalette, tick };
+    setWaterline, setFloor, setShadowSize, setMode, setPalette, onPalette, applyEnvI, tick };
 }

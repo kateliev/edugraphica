@@ -31,9 +31,11 @@ import { createShore } from './shore.js';
 // a low warm sun, pink light on the far hills.
 const LOOKS = [
   { key: 'day', top: '#2470b2', mid: '#7cb4d8', horizon: '#b4c3ca', deep: '#05161d', shallow: '#0b2d38', skyRefl: '#4f6b79', seabed: '#03101a',
+    sunI: 1.68, hemiI: .28, envI: .8,   // 80% of the stage light: the ship about 10% darker on screen (tone mapping softens it)
+    relief: .6,   // the high sun shows the plating dents more than the dawn light does
     shore: { far: '#6e837f', plateau: '#223a29', near: '#132719', lit: '#4f7244', town: '#cbc3b0', roof: '#844c40', cliff: '#ada284' } },
   { key: 'dawn', top: '#3d7a8e', mid: '#90b9b3', horizon: '#d6c9a1', deep: '#093f49', shallow: '#1b666c', skyRefl: '#7ca89f', seabed: '#083b43',
-    sun: '#ffc592', sunI: 2.6, sunDir: [6, 2.2, 4.5], hemiSky: '#d2e2da', hemiGround: '#2b5558', hemiI: .38, envGround: '#245c61',
+    sun: '#ffc592', sunI: 2.08, sunDir: [6, 2.2, 4.5], hemiSky: '#d2e2da', hemiGround: '#2b5558', hemiI: .3, envGround: '#245c61', envI: .8,
     glow: '#f2a46e', glowA: .45, clouds: .6, cloudC: '#e7cbaf', cloudS: '#7a8f92',
     shore: { far: '#8f91ac', plateau: '#5d6787', near: '#223b37', lit: '#e3a48e', litA: .75, shade: '#343c5a', shadeA: .55,
       town: '#e6d7ba', roof: '#ac6a53', cliff: '#ddba96' } },
@@ -205,16 +207,19 @@ export function createDrazki({ registry, M, t }) {
   };
   MAT.fire.userData.fire = true;
   // Surface noise (assets/js/explorer/surface.js) so big plain surfaces do not look like plastic:
-  // painted steel, the red-brown deck, matte interior machinery, the canvas boat cover.
+  // painted steel, the red-brown deck, matte interior machinery, the canvas boat cover, bare metal.
   const NOISE = {
-    paint: { mottle: .45, grain: 12, color: .05, rough: .12, bump: .004 },
-    deck: { mottle: .35, grain: 12, color: .08, rough: .08, bump: .003 },
-    inside: { mottle: .6, grain: 12, color: .07, rough: .1, bump: .003 },
-    canvas: { mottle: .9, grain: 16, color: .08, rough: .08, bump: .003 },
+    paint: { mottle: .4, color: .03, rough: .1, wave: .16, waveFreq: 1.1, dent: .05, dentFreq: 5, streak: .06, streakFreq: 9,
+      peel: .012, peelFreq: 90, peelRough: .05 },   // plating gently dished, small dents, faint weathering streaks, fine orange peel
+    metal: { mottle: 1.6, color: .06, rough: .14, wave: 0, dent: .05, dentFreq: 6, peel: 0, peelRough: .03 },   // bare steel, brass, bronze: handled, not polished
+    deck: { mottle: .35, color: .05, rough: .08, wave: .1, waveFreq: 1.4, peel: .018, peelFreq: 66, peelRough: .03 },
+    inside: { mottle: .6, color: .05, rough: .1, wave: .1, waveFreq: 2, peel: .015, peelFreq: 120, peelRough: .04 },
+    canvas: { mottle: .9, color: .05, rough: .06, wave: .22, waveFreq: 2.5, peel: .03, peelFreq: 210, peelRough: .04 },   // cloth sags between the lashings
   };
   for (const m of [MAT.grey, MAT.greyLight, MAT.white, MAT.dark, MAT.black, MAT.red]) addSurfaceNoise(m, NOISE.paint);
   for (const m of [MAT.boiler, MAT.engine, MAT.iron, MAT.primer]) addSurfaceNoise(m, NOISE.inside);
   addSurfaceNoise(MAT.canvas, NOISE.canvas);
+  for (const m of [MAT.steel, MAT.brass, MAT.bronze, MAT.copper]) addSurfaceNoise(m, NOISE.metal);
   const hullMat = key => cutMat(addSurfaceNoise(new THREE.MeshStandardMaterial({ map: hullTex, roughness: .5, metalness: .3 }), NOISE.paint), key);
   const innerMat = key => cutMat(addSurfaceNoise(new THREE.MeshStandardMaterial({ color: '#a39b8d', roughness: .95, side: THREE.BackSide, envMapIntensity: .3 }), NOISE.inside), key);
   const bulkMat = key => cutMat(addSurfaceNoise(std('#b3ab9e', { roughness: .9, envMapIntensity: .3 }), NOISE.inside), key);
@@ -1678,7 +1683,7 @@ export function createDrazki({ registry, M, t }) {
   return {
     root, waterline, floorY: -2.28,
     home: { pos: new V3(44, 17, 27), target: new V3(1, 1.2, 0), tallDrop: 4 },   // starboard bow quarter: the whole ship fits between the side panels
-    stage: { scale: 4.5, view: { minDistance: 3, maxDistance: 140 }, shadowMap: 4096, scenery: false,   // own backdrop: the Varna shore (shore.js)
+    stage: { scale: 4.5, view: { minDistance: 3, maxDistance: 140 }, shadowMap: 4096, scenery: false, waterAlpha: .74,   // own backdrop: the Varna shore (shore.js); a less see-through sea
       palette: { deep: '#061a22', shallow: '#0e3440', skyRefl: '#5d7886', seabed: '#041219', horizon: '#c6d2d8' },   // the Black Sea: darker than the default
       palettes: LOOKS },
     shadowSize: 23,

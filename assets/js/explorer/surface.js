@@ -1,57 +1,84 @@
 /*! edugraphica.org · © 2026 Vassil Kateliev
  *  PolyForm Noncommercial 1.0.0 — https://polyformproject.org/licenses/noncommercial/1.0.0
  *  Commercial use requires permission. See README for permitted uses. */
-// Edugraphica explorer — procedural surface noise for large plain surfaces (painted steel, decks, canvas).
-// No textures: the shader makes a 3D value noise from each point's position in the mesh's own space
-// (metres), so the grain has the same size on every part, needs no UVs and stays on a part when it
-// moves (explode, turning mounts). Two layers:
-//   mottle — large soft patches (colour and gloss vary a little, like old paint),
-//   grain  — fine speckle (gloss and a slight bump); it fades out where it would be smaller than a
-//            pixel, so far views do not shimmer.
-//   addSurfaceNoise(material, { mottle: 0.45, grain: 9, color: 0.05, rough: 0.12, bump: 0.004 })
-//     mottle, grain: frequencies (1/metre); color: ± brightness; rough: ± roughness; bump: grain relief.
-// Works with MeshStandardMaterial and MeshPhysicalMaterial. All noisy materials share one strength
+// Edugraphica explorer — procedural surface finish for large plain surfaces (painted steel, decks, canvas).
+// No textures: the shader makes 3D value noise from each point's position in the mesh's own space
+// (metres), so the pattern has the same size on every part, needs no UVs and stays on a part when it
+// moves (explode, turning mounts). Layers, all quiet on their own:
+//   mottle — large soft patches: the gloss varies, the colour only a little (old paint, touch-ups);
+//   wave   — gentle waviness of the plating about a metre across: it only tilts the normal, so it
+//            shows as a slow wobble in reflections and highlights, never as a texture;
+//   dent   — the same at hand size, for funnels, tubes and fittings smaller than a wave;
+//   streak — faint vertical weathering streaks (darker, duller) on upright faces only;
+//   peel   — fine "orange peel" of brushed paint, seen in highlights close up; where it would be
+//            smaller than a pixel it turns into a little extra roughness instead, so nothing shimmers.
+// The tilts use the noise's exact gradient (not screen-space derivatives), so they stay smooth.
+//   addSurfaceNoise(material, { mottle: .4, color: .03, rough: .1, wave: .16, waveFreq: 1.1, dent: 0, dentFreq: 5,
+//                               streak: 0, streakFreq: 9, peel: .012, peelFreq: 90, peelRough: .05 })
+//     mottle, …Freq: frequencies (1/metre); color: ± brightness; rough: ± roughness; streak: how much a
+//     streak darkens; wave, dent, peel: strength of the tilt (about the slope in radians at the steepest);
+//     peelRough: roughness the peel leaves when far. The wave eases to 40 % when far, so a whole ship
+//     does not look mottled. Streaks run along the mesh's own y axis (up for most parts).
+// Works with MeshStandardMaterial and MeshPhysicalMaterial. All materials share one strength
 // (SURFACE_NOISE.value, 0…1): ?noise=0 in the address turns it off to compare.
 export const SURFACE_NOISE = { value: new URLSearchParams(location.search).get('noise') === '0' ? 0 : 1 };
+// Strength of the tilts alone (wave, dent, peel): a low sun shows them gently, a high one too clearly,
+// so each scene palette sets its own (palette.relief, applied by the explorer).
+export const SURFACE_RELIEF = { value: 1 };
 
-const DEFAULTS = { mottle: .45, grain: 9, color: .05, rough: .12, bump: .004 };
+const DEFAULTS = { mottle: .4, color: .03, rough: .1, wave: .16, waveFreq: 1.1, dent: 0, dentFreq: 5, streak: 0, streakFreq: 9, peel: .012, peelFreq: 90, peelRough: .05 };
 const f = v => Number(v).toFixed(5);   // GLSL float literal
 
 const NOISE_GLSL = `
-uniform float egStrength;
-varying vec3 vEgPos;
+uniform float egStrength, egRelief;
+varying vec3 vEgPos, vEgN0, vEgN1, vEgN2, vEgNrm;
 float egHash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
-float egNoise(vec3 x) {
-  vec3 i = floor(x), u = fract(x); u = u * u * (3.0 - 2.0 * u);
-  return mix(mix(mix(egHash(i), egHash(i + vec3(1, 0, 0)), u.x), mix(egHash(i + vec3(0, 1, 0)), egHash(i + vec3(1, 1, 0)), u.x), u.y),
-             mix(mix(egHash(i + vec3(0, 0, 1)), egHash(i + vec3(1, 0, 1)), u.x), mix(egHash(i + vec3(0, 1, 1)), egHash(i + vec3(1, 1, 1)), u.x), u.y), u.z);
-}`;
+// value noise in 0…1 (x) and its gradient (yzw); quintic blending keeps the gradient smooth across cells
+vec4 egNoiseD(vec3 x) {
+  vec3 i = floor(x), w = fract(x);
+  vec3 u = w * w * w * (w * (w * 6.0 - 15.0) + 10.0), du = 30.0 * w * w * (w * (w - 2.0) + 1.0);
+  float a = egHash(i), b = egHash(i + vec3(1, 0, 0)), c = egHash(i + vec3(0, 1, 0)), d = egHash(i + vec3(1, 1, 0));
+  float e = egHash(i + vec3(0, 0, 1)), g = egHash(i + vec3(1, 0, 1)), h = egHash(i + vec3(0, 1, 1)), k = egHash(i + vec3(1, 1, 1));
+  float k1 = b - a, k2 = c - a, k3 = e - a, k4 = a - b - c + d, k5 = a - c - e + h, k6 = a - b - e + g, k7 = -a + b + c - d + e - g - h + k;
+  return vec4(a + k1 * u.x + k2 * u.y + k3 * u.z + k4 * u.x * u.y + k5 * u.y * u.z + k6 * u.z * u.x + k7 * u.x * u.y * u.z,
+    du * vec3(k1 + k4 * u.y + k6 * u.z + k7 * u.y * u.z, k2 + k5 * u.z + k4 * u.x + k7 * u.z * u.x, k3 + k6 * u.x + k5 * u.y + k7 * u.x * u.y));
+}
+float egFadeAt(float freq) { return 1.0 - smoothstep(0.25, 0.8, length(fwidth(vEgPos)) * freq); }   // 1 while the pattern is bigger than a pixel`;
 
 function install(mat) {
   const o = mat.userData.noise;
   mat.onBeforeCompile = shader => {
-    shader.uniforms.egStrength = SURFACE_NOISE;
+    shader.uniforms.egStrength = SURFACE_NOISE; shader.uniforms.egRelief = SURFACE_RELIEF;
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vEgPos;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvEgPos = transformed;');
+      .replace('#include <common>', '#include <common>\nvarying vec3 vEgPos, vEgN0, vEgN1, vEgN2, vEgNrm;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        vEgPos = transformed; vEgNrm = objectNormal;
+        vEgN0 = normalMatrix[0]; vEgN1 = normalMatrix[1]; vEgN2 = normalMatrix[2];   // mesh space → view space for the tilts`);
+    const sf = o.streakFreq;
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\n${NOISE_GLSL}`)
       .replace('#include <color_fragment>', `#include <color_fragment>
-        float egMottle = egNoise(vEgPos * ${f(o.mottle)}) * 0.6 + egNoise(vEgPos * ${f(o.mottle * 2.7)} + 7.3) * 0.4;
-        float egGrain = egNoise(vEgPos * ${f(o.grain)} + 3.1);
-        float egFade = 1.0 - smoothstep(0.35, 1.2, length(fwidth(vEgPos * ${f(o.grain)})));
-        diffuseColor.rgb *= 1.0 + egStrength * ${f(o.color)} * ((egMottle - 0.5) * 2.0 + (egGrain - 0.5) * egFade);`)
+        float egMottle = egNoiseD(vEgPos * ${f(o.mottle)}).x * 0.65 + egNoiseD(vEgPos * ${f(o.mottle * 2.6)} + 7.3).x * 0.35;
+        float egPeelFade = egFadeAt(${f(o.peelFreq)});
+        float egStreak = 0.0;
+        ${o.streak > 0 ? `{   // long thin noise along y: streaks; only on faces that stand upright
+          float s = egNoiseD(vEgPos * vec3(${f(sf)}, ${f(sf * .06)}, ${f(sf)}) + 2.0).x * 0.6 + egNoiseD(vEgPos * vec3(${f(sf * 2.3)}, ${f(sf * .12)}, ${f(sf * 2.3)}) + 9.0).x * 0.4;
+          egStreak = smoothstep(0.5, 0.85, s) * smoothstep(0.35, 0.85, 1.0 - abs(normalize(vEgNrm).y)) * egFadeAt(${f(sf * 2.3)}) * ${f(o.streak)};
+        }` : ''}
+        diffuseColor.rgb *= (1.0 + egStrength * ${f(o.color)} * (egMottle - 0.5) * 2.0) * (1.0 - egStrength * egStreak);`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-        roughnessFactor = clamp(roughnessFactor + egStrength * ${f(o.rough)} * ((egMottle - 0.5) * 1.4 + (egGrain - 0.5) * egFade), 0.04, 1.0);`)
+        roughnessFactor = clamp(roughnessFactor + egStrength * (${f(o.rough)} * (egMottle - 0.5) * 2.0 + ${f(o.peelRough)} * (1.0 - egPeelFade) + egStreak * 1.5), 0.04, 1.0);`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
         {
-          float egH = egGrain * egFade * egStrength * ${f(o.bump)};
-          vec3 sx = dFdx(-vViewPosition), sy = dFdy(-vViewPosition), r1 = cross(sy, normal), r2 = cross(normal, sx);
-          float det = dot(sx, r1) * faceDirection;
-          normal = normalize(abs(det) * normal - sign(det) * (dFdx(egH) * r1 + dFdy(egH) * r2));
+          vec3 egG = (egNoiseD(vEgPos * ${f(o.waveFreq)} + 1.7).yzw + 0.45 * egNoiseD(vEgPos * ${f(o.waveFreq * 2.3)} + 11.0).yzw) * ${f(o.wave)} * egFadeAt(${f(o.waveFreq * 2.3)})
+                     * (1.0 - 0.6 * smoothstep(0.012, 0.05, length(fwidth(vEgPos)) * ${f(o.waveFreq)}))
+                   + egNoiseD(vEgPos * ${f(o.dentFreq)} + 3.3).yzw * ${f(o.dent)} * egFadeAt(${f(o.dentFreq)})
+                   + egNoiseD(vEgPos * ${f(o.peelFreq)} + 5.0).yzw * ${f(o.peel)} * egPeelFade;
+          egG = mat3(vEgN0, vEgN1, vEgN2) * egG * egStrength * egRelief;
+          normal = normalize(normal - (egG - dot(egG, normal) * normal));
         }`);
   };
-  mat.customProgramCacheKey = () => 'eg-noise:' + JSON.stringify(o);
+  mat.customProgramCacheKey = () => 'eg-noise4:' + JSON.stringify(o);
   mat.needsUpdate = true;
   return mat;
 }
