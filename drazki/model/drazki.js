@@ -739,8 +739,16 @@ export function createDrazki({ registry, M, t }) {
     frame.push(cylGeo(new V3(X(RUD.xa), RUD.foot + .05, 0), new V3(X(RUD.xa), RUD.head + .06, 0), .07, 14));            // stock
     for (const y of [.7, 1.05]) frame.push(cylGeo(new V3(X(RUD.xa), y, 0), new V3(X(.02), y, 0), .045, 10));          // arms to the stern edge
     for (const y of [.7, 1.05]) frame.push(tf(new THREE.CylinderGeometry(.1, .1, .08, 16), [X(RUD.xa), y, 0]));       // their collars
-    frame.push(tf(new THREE.BoxGeometry(RUD.tiller - RUD.xa, .1, .07), [X((RUD.xa + RUD.tiller) / 2), RUD.head, 0]));  // tiller
-    frame.push(tf(new THREE.BoxGeometry(.1, .1, .8), [X(RUD.tiller), RUD.head, 0]));                                    // yoke for the chains
+    // tiller: a flat bar on edge, a stick seen from above; from the side a long narrow slot like the eye of a
+    // needle, rounded at both ends (owner). The steering chains are shackled to its forward end.
+    {
+      const L = RUD.tiller - RUD.xa, h = .075, eye = new THREE.Shape(), hole = new THREE.Path();
+      eye.moveTo(0, -h); eye.lineTo(L - h, -h * .7); eye.absarc(L - h * .7, 0, h * .7, -Math.PI / 2, Math.PI / 2, false); eye.lineTo(0, h); eye.absarc(0, 0, h, Math.PI / 2, Math.PI * 1.5, false);
+      hole.moveTo(.25, -.025); hole.lineTo(L - .2, -.02); hole.absarc(L - .2, 0, .02, -Math.PI / 2, Math.PI / 2, false); hole.lineTo(.25, .025); hole.absarc(.25, 0, .025, Math.PI / 2, Math.PI * 1.5, false);
+      eye.holes.push(hole);
+      const tg = new THREE.ExtrudeGeometry(eye, { depth: .035, bevelEnabled: true, bevelThickness: .008, bevelSize: .008, bevelSegments: 1, curveSegments: 10 });
+      tg.translate(X(RUD.xa), RUD.head, -.0175); frame.push(tg);
+    }
     frame.push(tube(new THREE.CatmullRomCurve3(GUARD.map(([x, y]) => new V3(X(x), y, 0)), false, 'centripetal'), .05, MAT.red, 80).geometry);   // propeller guard
     add(root, 'rudder', mesh(mergeGeos(frame), MAT.red));
   }
@@ -924,15 +932,18 @@ export function createDrazki({ registry, M, t }) {
     const sp = []; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; sp.push(cylGeo(new V3(0, 0, 0), new V3(Math.cos(a) * .52, Math.sin(a) * .52, 0), .018, 6)); }
     w.add(mesh(new THREE.TorusGeometry(.42, .026, 8, 40), MAT.wood), mesh(mergeGeos(sp), MAT.wood), mesh(tf(new THREE.CylinderGeometry(.07, .07, .1, 16), [0, 0, 0], [Math.PI / 2, 0, 0]), MAT.brass));
     g.add(w);
-    // chains and sheaves
-    const chain = [], sheaves = [];
+    // chains (owner): from the barrel down to a sheave under the wheel, out to a roller by the rail, aft along
+    // the rail, and round a roller abreast the end of the tiller to its yoke
+    const chain = [], sheaves = [], rollers = [], railW = xa => edge(xa).w - .1, onDeck = (xa, w) => new V3(X(xa), deckY(xa, w) + .07, w);
     for (const sd of [1, -1]) {
-      const p0 = new V3(xs, yb - .09, sd * .16), p1 = new V3(xs - .02, yd + .1, sd * .2), p2 = new V3(X(2.5), deckY(2.5, .34) + .08, sd * .34);
-      const p3 = new V3(X(RUD.tiller), RUD.head, sd * .38);   // the ends of the tiller yoke
-      chain.push(chainLinks([p0, p1, p1.clone().lerp(p2, .5).add(new V3(0, -.03, 0)), p2, p3], .02));
-      for (const p of [p1, p2]) sheaves.push(tf(new THREE.CylinderGeometry(.065, .065, .05, 14), [p.x, p.y - .02, p.z]), tf(new THREE.BoxGeometry(.16, .04, .1), [p.x, p.y - .07, p.z]));
+      const p0 = new V3(xs, yb - .09, sd * .16), p1 = new V3(xs - .02, yd + .1, sd * .2);
+      const fwd = onDeck(XW - .1, sd * railW(XW - .1)), aft = onDeck(1.7, sd * .74), tip = new V3(X(RUD.tiller) - .04, RUD.head, sd * .03);   // shackled to the end of the tiller
+      const run = []; for (let xa = XW - .7; xa > 2.2; xa -= .7) run.push(onDeck(xa, sd * railW(xa)));
+      chain.push(chainLinks([p0, p1, p1.clone().lerp(fwd, .5), fwd, ...run, onDeck(2.1, sd * (railW(2.1) - .05)), aft, tip], .02));
+      sheaves.push(tf(new THREE.CylinderGeometry(.065, .065, .05, 14), [p1.x, p1.y - .02, p1.z]), tf(new THREE.BoxGeometry(.16, .04, .1), [p1.x, p1.y - .07, p1.z]));
+      for (const p of [fwd, aft]) rollers.push(tf(new THREE.CylinderGeometry(.08, .08, .14, 16), [p.x, p.y, p.z]), tf(new THREE.CylinderGeometry(.11, .11, .02, 16), [p.x, p.y + .08, p.z]), tf(new THREE.BoxGeometry(.3, .04, .22), [p.x, p.y - .08, p.z]));
     }
-    g.add(mesh(mergeGeos(chain), MAT.iron), mesh(mergeGeos(sheaves), MAT.dark));
+    g.add(mesh(mergeGeos(chain), MAT.iron), mesh(mergeGeos(sheaves), MAT.dark), mesh(mergeGeos(rollers), MAT.dark));
     // baluster pedestal with a flat round top just forward of the wheel stand (CAD): its use is not known
     const bell = new THREE.LatheGeometry([[0, 0], [.2, 0], [.2, .04], [.11, .14], [.1, .24], [.16, .42], [.17, .52], [.12, .72], [.08, .8], [.1, .86], [.2, .9], [.21, .96], [0, .97]].map(([r, h]) => new THREE.Vector2(r, h)), 28);
     g.add(mesh(tf(bell, [X(XW + .6), deckY(XW + .6, 0) - .02, 0]), MAT.grey));
@@ -970,7 +981,7 @@ export function createDrazki({ registry, M, t }) {
       g.add(mesh(tf(new THREE.CylinderGeometry(.03, .04, .06, 12), [c.x - .08, c.y + .07, c.z]), MAT.iron));   // dish stem
     }
     // Hatch abreast the cage on the starboard side, with three deck lights and a V handle (CAD plan, coloured drawing).
-    add(root, 'hatches', vHatch(2.12, .85, deckY(2.12, .85) - .02, .2, 0));
+    add(root, 'hatches', vHatch(2.5, .78, deckY(2.5, .78) - .02, .2, 0));   // forward of the starboard chain roller
     add(root, 'aftWheel', g);
   }
   // Magazine below the conning tower: racks of 47 mm cartridges.
@@ -1164,21 +1175,23 @@ export function createDrazki({ registry, M, t }) {
   // Picture: ensign.png, rasterised from the public-domain "Naval ensign of Bulgaria (1878–1944).svg"
   // (Wikimedia Commons); proportions 939 × 566.
   const flagGeo = new THREE.PlaneGeometry(1.45, .874, 16, 8), flagBase = flagGeo.attributes.position.array.slice();
-  const STAFF = { xa: -.6, y: 1.06 };
+  const STAFF = { xa: .3, h: .8, staff: 2.2 };   // the arch at the stern end of the rail and the staff on top of it
+  STAFF.y = edge(STAFF.xa).h - .03 + STAFF.h;
   {
     const tex = new THREE.TextureLoader().load(new URL('./ensign.png', import.meta.url).href); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 8;
     tex.repeat.x = -1; tex.offset.x = 1;   // the picture has the canton on the left; on the ship the hoist (staff) is at +x
-    // The staff stands aft of the stern on an outrigger: two bars from the deck edges meet in a point 1.1 m
-    // aft of the hull, over the rudder, with a cross-piece for the staff (CAD, builder's drawing, coloured drawing).
-    const g = new THREE.Group(), xs = X(STAFF.xa), y0 = STAFF.y, e = edge(.5), tip = new V3(X(-1.1), STAFF.y - .02, 0), out = [];
-    for (const sd of [1, -1]) out.push(cylGeo(new V3(X(.5), e.h - .08, sd * (e.w - .04)), tip, .035, 8));
-    const zc = (e.w - .04) * (1 - (.5 - STAFF.xa) / 1.6);
-    out.push(cylGeo(new V3(xs, y0, -zc), new V3(xs, y0, zc), .035, 8), tf(new THREE.CylinderGeometry(.06, .06, .12, 12), [xs, y0 + .04, 0]));
-    g.add(mesh(mergeGeos(out), MAT.grey));
-    g.add(mesh(cylGeo(new V3(xs, y0, 0), new V3(xs, y0 + 3.0, 0), .035, 10, .025), MAT.wood));
-    g.add(mesh(tf(new THREE.SphereGeometry(.05, 12, 8), [xs, y0 + 3.03, 0]), MAT.brass));
+    // The staff stands at the very end of the hull on the stern rail (owner, CAD): a horseshoe arch of tube -
+    // an upside-down Y - straddles the rudder head and tiller so they can swing under it, and the staff rises
+    // from its top as the leg of the Y.
+    const g = new THREE.Group(), xs = X(STAFF.xa), e = edge(STAFF.xa), w = e.w - .03, y0 = STAFF.y;
+    const pts = [new V3(xs, e.h - .03, w), ...[...Array(13)].map((_, i) => { const a = Math.PI * i / 12; return new V3(xs, y0 - w + Math.sin(a) * w, Math.cos(a) * w); }), new V3(xs, e.h - .03, -w)];
+    g.add(tube(polyCurve(pts), .03, MAT.grey, 60));
+    for (const sd of [1, -1]) g.add(mesh(tf(new THREE.BoxGeometry(.12, .03, .1), [xs, e.h - .02, sd * w]), MAT.grey));   // feet
+    g.add(mesh(tf(new THREE.CylinderGeometry(.05, .045, .14, 12), [xs, y0 + .05, 0]), MAT.grey));                       // socket for the staff
+    g.add(mesh(cylGeo(new V3(xs, y0, 0), new V3(xs, y0 + STAFF.staff, 0), .035, 10, .025), MAT.wood));
+    g.add(mesh(tf(new THREE.SphereGeometry(.05, 12, 8), [xs, y0 + STAFF.staff + .03, 0]), MAT.brass));
     const flag = mesh(flagGeo, new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide, roughness: .85 }));
-    flag.position.set(xs - .745, y0 + 2.52, 0); g.add(flag);
+    flag.position.set(xs - .745, y0 + STAFF.staff - .48, 0); g.add(flag);
     add(root, 'ensign', g);
   }
 
@@ -1239,7 +1252,7 @@ export function createDrazki({ registry, M, t }) {
   // Bollards (bitts): the mooring ropes are made fast around them in figures of eight.
   {
     const gs = [];
-    for (const [xa, w] of [[1.7, .74], [9.55, 1.62], [16.0, 1.62], [35.75, .5]]) for (const sd of [1, -1]) {
+    for (const [xa, w] of [[9.55, 1.62], [16.0, 1.62], [35.75, .5]]) for (const sd of [1, -1]) {   // at the stern: chain rollers instead
       const y = deckY(xa, w) - .02, z = sd * w;
       gs.push(tf(new THREE.BoxGeometry(.62, .05, .26), [X(xa), y + .02, z]));
       for (const dx of [-.17, .17]) { gs.push(tf(new THREE.CylinderGeometry(.08, .085, .32, 16), [X(xa) + dx, y + .18, z])); gs.push(tf(new THREE.CylinderGeometry(.105, .105, .04, 16), [X(xa) + dx, y + .35, z])); }
@@ -1270,7 +1283,7 @@ export function createDrazki({ registry, M, t }) {
       const tops = [], mids = [], net = { pos: [], uv: [], idx: [] }; let wingDone = false, gunDone = false;
       const GW = GUNS.find(G => G.sd === sd);
       // the rail is closed round the stern: both ropes start at the ensign staff
-      { const e = edge(.7), x = X(STAFF.xa) + .03; tops.push(new V3(x, e.h + .88, 0)); mids.push(new V3(x, e.h + .47, 0)); }
+      { const e = edge(STAFF.xa), x = X(STAFF.xa) + .03; tops.push(new V3(x, STAFF.y, 0)); mids.push(new V3(x, e.h + .47, sd * (e.w - .03))); }
       const xs = []; for (let xa = .7; xa < 37.3; xa += 1.25) xs.push(xa);
       for (const xa of xs) {
         const { yb, w, e } = railZ(xa);
@@ -1630,7 +1643,7 @@ export function createDrazki({ registry, M, t }) {
     mast: () => mastAt(8.2),
     funnels: () => new V3(X(22.9) - .2, FUN_TOP - .25, .45),
     shellHole: () => { const v = new V3(); shellHole.children[0].getWorldPosition(v); root.worldToLocal(v); return v; },
-    ensign: () => new V3(X(STAFF.xa) - .745, STAFF.y + 2.54, 0),
+    ensign: () => new V3(X(STAFF.xa) - .745, STAFF.y + STAFF.staff - .48, 0),
     nameplate: () => onHull(35.25, 1.72, 1, .05).p,
     bulkheads: () => new V3(X(9.6), .3, .6),
     twinTubes: () => new V3(mount.position.x, mount.position.y + 1.4, 0),
