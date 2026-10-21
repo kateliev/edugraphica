@@ -287,18 +287,22 @@ export function createDrazki({ registry, M, t }) {
      ===================================================================== */
   const hullUV = (xa, z, h) => [xa / LOA, (h + 2.6) / 5.2];
   const deckUV = (xa, z) => [xa / LOA, .5 + z / 5];
+  // The inside face of the plating: seen only in the cutaway, hidden otherwise. No shadow of its own (the
+  // outside face already casts the same one), so opening the cutaway needs no new shadow shader.
+  const innerSkins = [];
+  const skin = m => (innerSkins.push(m), m);
   for (const side of [1, -1]) {
     for (const [st, key] of [[stationsMain, 'main'], [stationsFwd, 'fwd']]) {
       const g = surfaceGeo(st, s => s.side, side, hullUV);
       add(root, 'hull', mesh(g, hullMat(key)));
-      add(root, 'hull', mesh(g, innerMat(key)), { noPick: true });
+      add(root, 'hull', skin(mesh(g, innerMat(key))), { noPick: true, shadow: false });
     }
     const gd = surfaceGeo(stationsMain, s => s.deck, side, deckUV);
     add(root, 'deck', mesh(gd, cutMat(addSurfaceNoise(new THREE.MeshStandardMaterial({ map: deckTex, roughness: .85 }), NOISE.deck), 'main')));
-    add(root, 'deck', mesh(gd, innerMat('main')), { noPick: true });
+    add(root, 'deck', skin(mesh(gd, innerMat('main'))), { noPick: true, shadow: false });
     const gf = surfaceGeo(stationsFwd, s => s.deck, side, deckUV);
     add(root, 'forecastle', mesh(gf, cutMat(addSurfaceNoise(new THREE.MeshStandardMaterial({ map: fcTex, roughness: .55, metalness: .3 }), NOISE.paint), 'fwd')));
-    add(root, 'forecastle', mesh(gf, innerMat('fwd')), { noPick: true });
+    add(root, 'forecastle', skin(mesh(gf, innerMat('fwd'))), { noPick: true, shadow: false });
   }
 
   // Stem bar: the steel bar along the bow, from the forefoot up to the deck.
@@ -336,8 +340,9 @@ export function createDrazki({ registry, M, t }) {
   {
     const g = new THREE.Group(), xs = []; for (let xa = WING.xa0; xa <= WING.xa1 + 1e-6; xa += .1) xs.push(xa);
     const gm = MAT_PERF, pm = MAT_PLATE;
-    const ribs = [], bw = [];
+    const bwg = new THREE.Group();   // one child per side: in the exploded view each wing moves out to its own side
     for (const sd of [1, -1]) {
+      const ribs = [], bw = [];
       // plan outline: inner edge (stepping in at the front of the tower), front, outer edge back to the tower
       const pts = [[WING.xa0, WING.ct], [WING.ctx, WING.ct], [WING.ctx, WING.alley], [BW.b[0], WING.alley]];
       for (let i = 15; i > 0; i--) { const [xa, z] = bwAt(i / 16); pts.push([xa, Math.max(z - .006, WING.alley)]); }   // the front follows the breakwater
@@ -372,10 +377,10 @@ export function createDrazki({ registry, M, t }) {
       });
       const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); bg.setIndex(idx); bg.computeVertexNormals();
       bw.push(bg, tube(top, .02, MAT.grey, 40).geometry);
+      g.add(mesh(mergeGeos(ribs), pm)); bwg.add(mesh(mergeGeos(bw), pm));
     }
-    g.add(mesh(mergeGeos(ribs), pm));
     add(root, 'bridge', g);
-    add(root, 'breakwater', mesh(mergeGeos(bw), pm));
+    add(root, 'breakwater', bwg);
   }
   // Hand winch on the forecastle in front of the conning tower, between the bridge wings (CAD reconstruction): two side frames
   // with long legs leaning towards the tower, the crank shaft on top with two waisted warping drums, and
@@ -913,9 +918,9 @@ export function createDrazki({ registry, M, t }) {
   }
   const gunWingIn = (G, xa) => hb(xa, G.y) - .03;
   {
-    const g = new THREE.Group(), ribs = [], rims = [];
+    const g = new THREE.Group();   // children per side (wing, its knees and rim, the gun): they explode apart
     for (const G of GUNS) {
-      const { sd, y } = G, pts = [];
+      const { sd, y } = G, pts = [], ribs = [], rims = [];
       for (let xa = G.xa0; xa <= G.xa1 + 1e-6; xa += .15) pts.push([xa, gunWingIn(G, xa)]);
       pts.push([G.xa1, G.zo], [G.xa0, G.zo]);
       const sh = new THREE.Shape(); pts.forEach(([xa, z], i) => (i ? sh.lineTo(X(xa), -sd * z) : sh.moveTo(X(xa), -sd * z))); sh.closePath();
@@ -936,8 +941,8 @@ export function createDrazki({ registry, M, t }) {
       }
       const gun = gun47(); gun.position.set(X(G.xg), y, sd * hb(G.xg, y)); gun.rotation.y = -sd * deg(8);   // half on the hull, half on the wing; trained forward
       g.add(gun); G.gun = gun;
+      g.add(mesh(mergeGeos(ribs.concat(rims)), MAT_PLATE));
     }
-    g.add(mesh(mergeGeos(ribs.concat(rims)), MAT_PLATE));
     add(root, 'foreGun', g);
   }
   // Aft steering position: a wheel on the stern deck. Its barrel winds two chains that run along the
@@ -1393,9 +1398,8 @@ export function createDrazki({ registry, M, t }) {
     let wMax = 0; for (let i = 0; i <= 12; i++) for (let j = 0; j <= 6; j++) wMax = Math.max(wMax, hb(xa0 + L * i / 12, yc - .66 + 1.32 * j / 6), railZ(xa0 + L * i / 12).w + .03);
     const hm = MAT.white.clone(); hm.side = THREE.DoubleSide;
     const cm = MAT.canvas.clone(); cm.side = THREE.DoubleSide;
-    const wood = [], straps = [];
-    for (const sd of [1, -1]) {
-      const zg = sd * (wMax + .05);
+    for (const sd of [1, -1]) {   // children per side: the two boats explode apart
+      const zg = sd * (wMax + .05), wood = [], straps = [];
       // a: 0 … π round the section, from the upper gunwale over the keel (outboard) to the lower gunwale
       const hull = (u, v) => { const a = Math.PI * v; return [X(xa0) + u * L, yc + Math.cos(a) * hbD(u), zg + sd * Math.sin(a) * dep(u)]; };
       const cover = (u, v) => { const a = Math.PI * v; return [X(xa0) + u * L, yc + Math.cos(a) * hbD(u) * 1.02, zg - sd * Math.sin(a) * .03]; };
@@ -1418,8 +1422,8 @@ export function createDrazki({ registry, M, t }) {
         const to = k > 0 ? new V3(X(xa), e.h - .02, sd * (e.w - .02)) : new V3(X(xa), y, sd * (hb(xa, y) - .02));
         straps.push(cylGeo(new V3(X(xa), y, zg), to, .015, 6));
       }
+      g.add(mesh(mergeGeos(wood), MAT.wood), mesh(mergeGeos(straps), MAT.dark));
     }
-    g.add(mesh(mergeGeos(wood), MAT.wood), mesh(mergeGeos(straps), MAT.dark));
     add(root, 'dinghy', g);
   }
   // Lifebuoys on the rails.
@@ -1581,20 +1585,129 @@ export function createDrazki({ registry, M, t }) {
   }
 
   /* =====================================================================
+     PEOPLE FOR SCALE (not parts)
+     Faint flat silhouettes of sailors at work, 1.70 m tall, on deck and below decks (those show in the
+     cutaway only). Each is a side view on an upright card that turns about its own vertical axis to face
+     the camera and is mirrored so the sailor keeps facing the way he works.
+     ===================================================================== */
+  // A pose in metres, side view facing +x, feet at y 0: head, c (top of the chest), p (pelvis),
+  // arms [elbow, wrist] × 2 from the shoulders, legs [knee, ankle, toe] × 2 from the hip, tool(draw).
+  const STAND_LEGS = [[[.03, .5], [0, .08], [.19, .035]], [[-.03, .5], [-.05, .08], [.14, .035]]];
+  const POSES = {
+    stand: { head: [.02, 1.58], c: [0, 1.33], p: [0, .95], arms: [[[.03, 1.08], [.05, .84]], [[-.02, 1.08], [-.01, .83]]], legs: STAND_LEGS },
+    back: { head: [.02, 1.58], c: [0, 1.33], p: [0, .95], arms: [[[-.09, 1.1], [-.11, .93]], [[-.07, 1.1], [-.1, .94]]], legs: STAND_LEGS },   // hands behind the back
+    helm: { head: [.05, 1.58], c: [.02, 1.33], p: [0, .95], arms: [[[.2, 1.14], [.4, 1.22]], [[.17, 1.1], [.38, 1.1]]],
+      legs: [[[.06, .5], [.06, .08], [.25, .035]], [[-.06, .5], [-.12, .08], [.07, .035]]] },
+    binoc: { head: [.03, 1.58], c: [0, 1.33], p: [0, .95], arms: [[[.2, 1.3], [.15, 1.53]], [[.17, 1.26], [.13, 1.5]]], legs: STAND_LEGS,
+      tool: d => d.box(.1, 1.5, .2, 1.6) },
+    walk: { head: [.04, 1.58], c: [.02, 1.33], p: [0, .94], arms: [[[-.08, 1.08], [-.14, .85]], [[.09, 1.08], [.2, .88]]],
+      legs: [[[.13, .52], [.08, .08], [.27, .035]], [[-.08, .5], [-.24, .12], [-.1, .03]]] },
+    haul: { head: [-.13, 1.52], c: [-.11, 1.28], p: [0, .9], arms: [[[.12, 1.22], [.36, 1.2]], [[.1, 1.16], [.33, 1.12]]],
+      legs: [[[.25, .52], [.38, .08], [.56, .035]], [[-.1, .5], [-.16, .08], [.03, .035]]], tool: d => d.line([[.3, 1.17], [.98, .82]], .028) },
+    aim: { head: [.17, 1.5], c: [.1, 1.29], p: [0, .91], arms: [[[.26, 1.17], [.42, 1.27]], [[.2, 1.1], [.37, 1.16]]],
+      legs: [[[.2, .5], [.26, .08], [.45, .035]], [[-.12, .5], [-.24, .08], [-.05, .035]]] },
+    shovel: { head: [.38, 1.28], c: [.24, 1.14], p: [-.04, .84], arms: [[[.36, .92], [.52, .74]], [[.2, .88], [.28, .66]]],
+      legs: [[[.16, .48], [.08, .08], [.27, .035]], [[-.22, .46], [-.34, .08], [-.15, .035]]],
+      tool: d => { d.line([[.12, .86], [.66, .4]], .035); d.line([[.64, .41], [.84, .26]], .17, 'butt'); } },
+    oil: { head: [.12, 1.52], c: [.07, 1.3], p: [0, .93], arms: [[[.2, 1.08], [.4, 1.02]], [[0, 1.06], [.02, .82]]],
+      legs: [[[.05, .5], [.02, .08], [.21, .035]], [[-.03, .5], [-.06, .08], [.13, .035]]],
+      tool: d => { d.dot(.44, .96, .055); d.line([[.47, .99], [.62, .92]], .015); } },   // an oil can
+    sit: { head: [.06, 1.15], c: [.03, .89], p: [0, .52], arms: [[[.16, .68], [.4, .76]], [[.13, .66], [.37, .73]]],
+      legs: [[[.42, .5], [.43, .08], [.6, .035]], [[.38, .48], [.36, .08], [.54, .035]]] },
+    lie: { head: [-.68, .13], c: [-.42, .12], p: [0, .1], arms: [[[-.14, .1], [.08, .09]], [[-.16, .13], [.06, .12]]],
+      legs: [[[.43, .11], [.82, .09], [.86, .2]], [[.42, .14], [.8, .12], [.85, .22]]] },   // asleep in a bunk, no cap
+  };
+  const PPM = 160, CELL = 2, COLS = 4;   // picture: pixels per metre; each figure has a 2 × 2 m cell
+  function drawFigure(c, ox, oy, { pose, cap }) {
+    const P = POSES[pose], px = ([x, y]) => [ox + (CELL / 2 + x) * PPM, oy + (CELL - y) * PPM - 3];
+    const d = {
+      line(pts, w, capStyle = 'round') {
+        c.lineWidth = w * PPM; c.lineCap = capStyle; c.lineJoin = 'round'; c.beginPath();
+        pts.forEach((q, i) => (i ? c.lineTo(...px(q)) : c.moveTo(...px(q)))); c.stroke();
+      },
+      dot(x, y, r) { const [u, v] = px([x, y]); c.beginPath(); c.arc(u, v, r * PPM, 0, Math.PI * 2); c.fill(); },
+      box(x0, y0, x1, y1) { const [u0, v0] = px([x0, y1]), [u1, v1] = px([x1, y0]); c.fillRect(u0, v0, u1 - u0, v1 - v0); },
+    };
+    const sh = [P.c[0], P.c[1] + .05];
+    for (const [kn, an, toe] of P.legs) { d.line([P.p, kn], .15); d.line([kn, an], .11); d.line([an, toe], .085); }
+    d.line([P.c, P.p], .27); d.line([P.c, P.head], .1);
+    for (const [el, wr] of P.arms) { d.line([sh, el], .095); d.line([el, wr], .075); d.dot(...wr, .045); }
+    d.dot(...P.head, .105);
+    const [hx, hy] = P.head;
+    if (cap) {   // the sailor's flat cap; the officer's has a peak
+      const [u, v] = px([hx - .005, hy + .075]); c.beginPath(); c.ellipse(u, v, .125 * PPM, .032 * PPM, 0, 0, Math.PI * 2); c.fill();
+      d.box(hx - .095, hy + .03, hx + .085, hy + .08);
+      if (cap === 'officer') d.line([[hx + .06, hy + .045], [hx + .16, hy + .025]], .025);
+    }
+    P.tool?.(d);
+  }
+  const GUN = GUNS[0], bunkY = -.45 + .38, bunkW = fitW(29.2, 31.0, bunkY - .05, bunkY + .25) - .36, sofaW = fitW(5.1, 8.1, -.12, -.12 + .95) - .35;
+  const onDeck = (xa, z) => [xa, deckY(xa, z) - .01, z];
+  // figure: pose, cap, where (xa, y, z), the way he faces (model frame), inside = below decks
+  const FIGURES = [
+    { pose: 'helm', cap: 'sailor', at: [27.0, CT.y0, 0], face: [1, 0] },                                       // at the wheel in the conning tower
+    { pose: 'binoc', cap: 'officer', at: [28.6, PY, (WING.alley + wingOut(28.6)) / 2 + .1], face: [1, 0] },   // on the starboard bridge wing
+    { pose: 'binoc', cap: 'sailor', at: onDeck(35.8, -.25), face: [1, 0] },                                 // lookout at the bow
+    { pose: 'haul', cap: 'sailor', at: onDeck(33.4, .35), face: [1, 0] },                                   // at the windlass
+    { pose: 'aim', cap: 'sailor', at: [GUN.xg - .55, GUN.y, GUN.zo - .2], face: [1, 0] },                    // the starboard 47 mm gun
+    { pose: 'walk', cap: 'sailor', at: onDeck(14.8, 1.45), face: [1, 0] },
+    { pose: 'stand', cap: 'sailor', at: onDeck(12.25, 1.25), face: [-1, 0] },                               // by the twin torpedo tube
+    { pose: 'back', cap: 'officer', at: onDeck(8.3, -1.0), face: [1, 0] },
+    { pose: 'helm', cap: 'sailor', at: onDeck(4.5, 0), face: [1, 0] },                                      // at the aft wheel
+    { pose: 'shovel', at: [20.75, -.98, .45], face: [-1, 0], inside: true },                                // stoker at the forward boiler
+    { pose: 'oil', at: [12.6, -.95, .95], face: [-1, 0], inside: true },                                    // engineer at the engine
+    { pose: 'sit', cap: 'sailor', at: [31.0, -.45, .5], face: [0, -1], inside: true },                      // at the mess table
+    { pose: 'lie', at: [30.1, bunkY + .22, bunkW], face: [1, 0], inside: true },                            // in a lower bunk
+    { pose: 'sit', cap: 'officer', at: [6.6, -.12, sofaW], face: [0, -1], inside: true },                   // in the wardroom
+  ];
+  const people = new THREE.Group(), crewOut = new THREE.Group(), crewInside = new THREE.Group();
+  people.add(crewOut, crewInside); people.visible = false; root.add(people);
+  {
+    const rows = Math.ceil(FIGURES.length / COLS), cw = CELL * PPM;
+    const tex = canvasTex(COLS * cw, rows * cw, c => { c.fillStyle = c.strokeStyle = '#fff'; FIGURES.forEach((f, i) => drawFigure(c, (i % COLS) * cw, Math.floor(i / COLS) * cw, f)); });
+    const mat = new THREE.MeshBasicMaterial({ map: tex, color: '#0b1116', transparent: true, opacity: .55, depthWrite: false, side: THREE.DoubleSide });
+    const _cam = new V3();
+    FIGURES.forEach((f, i) => {
+      const g = new THREE.PlaneGeometry(CELL, CELL); g.translate(0, CELL / 2, 0);
+      const u0 = (i % COLS) / COLS, v1 = 1 - Math.floor(i / COLS) / rows, uv = g.attributes.uv;
+      for (let k = 0; k < uv.count; k++) uv.setXY(k, u0 + uv.getX(k) / COLS, v1 - (1 - uv.getY(k)) / rows);
+      const m = mesh(g, mat); m.position.set(X(f.at[0]), f.at[1], f.at[2]); m.renderOrder = 4;   // after the water
+      m.onBeforeRender = (r, s, cam) => {
+        _cam.setFromMatrixPosition(cam.matrixWorld); m.parent.worldToLocal(_cam);
+        const yaw = Math.atan2(_cam.x - m.position.x, _cam.z - m.position.z);
+        const d = f.face[0] * Math.cos(yaw) - f.face[1] * Math.sin(yaw);   // facing · the card's right
+        m.rotation.set(0, yaw, 0); if (Math.abs(d) > .15) m.scale.x = d < 0 ? -1 : 1;
+        m.updateMatrix(); m.matrixWorld.multiplyMatrices(m.parent.matrixWorld, m.matrix);
+      };
+      (f.inside ? crewInside : crewOut).add(m);
+    });
+  }
+  let peopleOn = false;
+
+  /* =====================================================================
      CUTAWAY
      The starboard side plating is cut away below the deck edge, like the
      cutaway builder's model in the Naval Museum in Varna.
      ===================================================================== */
+  // Shown in the Studio only: turning it on moves to the Studio, going back to the water turns it off.
+  // Outside the cutaway everything below decks is hidden (fewer draw calls and shadows, fewer parts in the
+  // exploded view). The cut materials always keep two planes - when closed, planes that clip nothing - so
+  // switching never rebuilds the shaders; the interior lights stay in the scene at 0 for the same reason.
   const P = (x, y, z, c) => new THREE.Plane(new V3(x, y, z), c);
   const cutLocal = { main: [P(0, 0, -1, 0), P(0, 1, 0, -1.2)], fwd: [P(0, 0, -1, 0), P(0, 1, 0, -1.6)] };
   const cutWorld = { main: cutLocal.main.map(p => p.clone()), fwd: cutLocal.fwd.map(p => p.clone()) };
-  let cutaway = false;
+  const closed = [P(0, 0, -1, 0), P(0, 1, 0, 1e5)], cutClosed = { main: closed, fwd: closed };
+  let cutaway = false, mode = 'water', ui = null;
   const interiorLights = new THREE.Group(); root.add(interiorLights);
   for (const [xa, y] of [[6.6, .9], [14.5, .7], [29.5, .9]]) { const l = new THREE.PointLight('#ffe7c4', 0, 9, 1.6); l.position.set(X(xa), y, -.3); interiorLights.add(l); }
+  const insideObjs = Object.values(PART).filter(p => p.inside).flatMap(p => registry.partObjs[p.id] || []).concat(innerSkins);
   function setCutaway(on) {
     cutaway = on;
-    registry.setCut(on ? cutWorld : null);
+    if (on && mode !== 'studio') ui?.setMode('studio');
+    registry.setCut(on ? cutWorld : cutClosed);
     for (const l of interiorLights.children) l.intensity = on ? .6 : 0;
+    for (const o of insideObjs) o.visible = on;
+    crewInside.visible = on;
   }
 
   /* =====================================================================
@@ -1614,7 +1727,12 @@ export function createDrazki({ registry, M, t }) {
       set: v => { train = v; mount.rotation.y = -deg(v); onFireState(); } },
     { id: 'fire', type: 'button', label: 'controls.fire', title: 'controls.fireTitle', run: fire, enabled: canFire },
     { id: 'cutaway', type: 'toggle', label: 'controls.cutaway', title: 'controls.cutawayTitle', value: false, set: setCutaway },
+    { id: 'people', type: 'toggle', label: 'controls.people', title: 'controls.peopleTitle', value: false, set: on => { peopleOn = on; } },
   ];
+  setCutaway(false);
+  // exploded view: besides each part's own offset (parts.js), everything moves out from midships by 20 % of
+  // its distance, so the bow parts go forward and the stern parts aft
+  registry.setSpread([.2, 0, 0]);
 
   let theta = 0, propA = 0, smokeAcc = [0, 0], fireLive = null;
   const _v = new V3();
@@ -1622,6 +1740,9 @@ export function createDrazki({ registry, M, t }) {
     // cutaway planes follow the gently moving hull
     root.updateMatrixWorld();
     for (const k in cutLocal) cutLocal[k].forEach((p, i) => cutWorld[k][i].copy(p).applyMatrix4(root.matrixWorld));
+    const exploded = (state?.explode ?? 0) > .02;
+    people.visible = peopleOn && !exploded;                                     // not in the exploded view
+    for (const m of innerSkins) m.visible = cutaway || exploded;                // the lifted deck opens the hull
     const sp = speed / 26;
     // engine and propeller: up to about 4 turns a second here (the real engine: ~6)
     const rps = sp * 4 + (speed > 0 ? .25 : 0);
@@ -1675,9 +1796,11 @@ export function createDrazki({ registry, M, t }) {
     bowTube: () => new V3(X(38.2), 1.42, 0),
     anchors: () => new V3(X(32.85), deckY(32.85, .82) + .15, .82),
   };
+  const liveAnchors = new Set(['shellHole', 'foreGun']);   // these read where their object is now, exploded or not
   function anchor(id, out) {
     const f = anchors[id]; if (!f) return false;
-    out.copy(f()).add(registry.offsetOf(id)).applyMatrix4(root.matrixWorld); return true;
+    out.copy(f()); if (!liveAnchors.has(id)) out.add(registry.offsetOf(id));
+    out.applyMatrix4(root.matrixWorld); return true;
   }
 
   return {
@@ -1690,11 +1813,12 @@ export function createDrazki({ registry, M, t }) {
     motion: { heave: .05, roll: .012, pitch: .004 },
     controls,
     update, anchor,
-    labelHidden: (id, st) => PART[id]?.inside && !cutaway && (st?.explode ?? 0) < .5,
-    onMode: m => { wake.visible = m === 'water'; },
+    labelHidden: id => PART[id]?.inside && !cutaway,
+    onMode: m => { mode = m; wake.visible = m === 'water'; if (m !== 'studio' && cutaway) ui?.controls.cutaway.set(false); },
+    onSelect: id => { if (id && PART[id]?.inside && !cutaway) ui?.controls.cutaway.set(true); },   // a part below decks: open the cutaway
     onExplode: () => {},
     attach: stage => { createShore(stage); },
-    bindUI: ui => { onFireState = () => ui.refreshControls(); },
+    bindUI: api => { ui = api; onFireState = () => api.refreshControls(); },
     redraw: () => { drawPlate(); drawTelegraph(); },
   };
 }

@@ -81,6 +81,7 @@ export async function startExplorer({ site, ns, createModel, parts, groups, pain
     ui.updateLabels();
     requestAnimationFrame(frame);
   }
+  precompile(renderer, scene, camera);
   document.getElementById('loading')?.remove();
   frame();
   document.fonts?.ready.then(() => model.redraw?.());
@@ -89,4 +90,29 @@ export async function startExplorer({ site, ns, createModel, parts, groups, pain
   // noise: SURFACE_NOISE.value = 0…1 changes the surface noise live (or ?noise=0 in the address).
   window.edugraphica = { THREE, stage, registry, model, state, ui, strings: { S, W, M, G }, t, noise: SURFACE_NOISE };
   return window.edugraphica;
+}
+
+// Compile every shader before the first frame, hidden parts included (cutaway, interior, studio): the driver
+// can then build them side by side instead of one at a time between draw calls (Drazki: 3.0 s → 1.0 s).
+// three r147's renderer.compile() keys each shader with the clipping state the last draw left behind, so the
+// materials with clipping planes get their own round, after a tiny off-screen draw that sets that state.
+function precompile(renderer, scene, camera) {
+  const groups = new Map(), clipped = new Map();   // "planes|intersection" → objects; object → its material
+  scene.traverse(o => {
+    const m = o.material; if (!m?.clippingPlanes?.length) return;
+    const k = `${m.clippingPlanes.length}|${m.clipIntersection}`;
+    (groups.get(k) || groups.set(k, []).get(k)).push(o); clipped.set(o, m);
+  });
+  const rt = new THREE.WebGLRenderTarget(1, 1), probe = new THREE.Scene(), dot = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshBasicMaterial());
+  dot.frustumCulled = false; probe.add(dot);
+  const prime = m => { dot.material = m; renderer.setRenderTarget(rt); renderer.render(probe, camera); renderer.setRenderTarget(null); };
+  const only = list => { for (const [o, m] of clipped) o.material = list.includes(o) ? m : null; };   // compile() skips objects without one
+  prime(dot.material); only([]); renderer.compile(scene, camera);
+  for (const list of groups.values()) {
+    const m = clipped.get(list[0]);
+    prime(new THREE.MeshBasicMaterial({ clippingPlanes: m.clippingPlanes, clipIntersection: m.clipIntersection }));
+    only(list); renderer.compile(scene, camera);
+  }
+  for (const [o, m] of clipped) o.material = m;
+  rt.dispose(); dot.geometry.dispose();
 }

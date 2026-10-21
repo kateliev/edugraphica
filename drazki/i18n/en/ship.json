@@ -12,7 +12,7 @@
     "text": "Drazki (Дръзки, “Daring”) is a small, fast warship built in France for the Bulgarian Navy. She is 38 metres long, reached 26 knots and carried torpedoes as her main weapon. On the night of 21 November 1912 she crept up to the Ottoman cruiser Hamidiye and hit it with a torpedo – the most famous moment in the history of the Bulgarian Navy. Today she stands in the Sea Garden in Varna as a museum ship.",
     "spec": [["Length", "38 m"], ["Beam", "4.4 m"], ["Draught", "≈ 1.3 m"], ["Displacement", "97.5 t"], ["Engine", "Steam, ≈ 1,900 hp"], ["Top speed", "26 knots (48 km/h)"], ["Crew", "27–32"], ["Weapons", "3 torpedo tubes, 2 guns"]],
     "fact": "In Bulgarian a torpedo boat is a “миноносец” – a “mine carrier”. When torpedoes were new they were called “self-propelled mines”, and the name stayed.",
-    "hint": "Click any part of the ship or pick one from the list. Drag to look around, scroll or pinch to zoom. Set the speed, turn the torpedo tubes and fire, or open the cutaway to look inside.",
+    "hint": "Click any part of the ship or pick one from the list. Drag to look around, scroll or pinch to zoom. Set the speed, turn the torpedo tubes and fire, or open the cutaway to look inside. Turn on People to see the ship next to its crew.",
     "link": { "label": "The night attack of 1912 →", "href": "drazki/story/" }
   },
   "groups": {
@@ -32,7 +32,9 @@
     "fire": "Fire!",
     "fireTitle": "Turn the twin tube at least 30°, then fire. The two tubes take turns: one fires to the right, the other to the left.",
     "cutaway": "Cutaway",
-    "cutawayTitle": "Take away the starboard side plating to look inside"
+    "cutawayTitle": "Take away the starboard side plating to look inside (in the Studio)",
+    "people": "People",
+    "peopleTitle": "Show sailors at work, on deck and below, to see how big the ship is: each figure is 1.70 m tall"
   },
   "looks": {
     "day": "Day",

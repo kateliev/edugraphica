@@ -195,7 +195,8 @@ export function createStage(canvas, opts = {}) {
   function setMode(mode, stageColor) {
     const w = mode === 'water';
     water.visible = scenery.visible = sky.visible = seabed.visible = w; studio.visible = !w;
-    scene.fog = w ? fog : null;
+    // the studio has no haze: push the fog out of reach instead of removing it, which would rebuild every shader
+    fog.near = w ? 70 * k : 1e7; fog.far = w ? 420 * k : 2e7;
     scene.background = w ? null : new THREE.Color(stageColor || '#d3e8f5');
     controls.maxPolarAngle = w ? 1.62 : 1.78;
   }

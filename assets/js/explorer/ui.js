@@ -233,13 +233,16 @@ export function createUI({ stage, registry, model, state, S, W, M, G, parts, gro
   /* ---------------- picking and hover ---------------- */
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
   let downAt = null, pending = null;
-  const clipped = (h) => [].concat(h.object.material).some(m => m.clippingPlanes?.some(pl => pl.distanceToPoint(h.point) < 0));
+  // cut away at the hit point: outside any plane, or with clipIntersection outside all of them
+  const clipped = (h) => [].concat(h.object.material).some(m => m.clippingPlanes?.length &&
+    m.clippingPlanes[m.clipIntersection ? 'every' : 'some'](pl => pl.distanceToPoint(h.point) < 0));
+  const shown = o => { for (; o; o = o.parent) if (!o.visible) return false; return true; };   // a hidden group hides its meshes
   function pick(ev) {
     const r = canvas.getBoundingClientRect();
     ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ndc, camera);
     for (const h of ray.intersectObjects(pickables, false)) {
-      const id = h.object.userData.part; if (!id || !h.object.visible) continue;
+      const id = h.object.userData.part; if (!id || !shown(h.object)) continue;
       if (clipped(h)) continue;   // cut away: click through to what is behind
       // with other parts faded, click through them to the highlighted one
       if (state.ghost && state.selected && id !== state.selected && [].concat(h.object.material).some(m => m.transparent && m.opacity < .3 && !m.userData.helper)) continue;

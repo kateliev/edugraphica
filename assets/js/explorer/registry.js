@@ -9,15 +9,21 @@ import * as THREE from 'three';
 import { UP } from './geometry.js';
 import { reapplySurfaceNoise } from './surface.js';
 
-// partsMeta: [{ id, group, off:[x,y,z], swing?, sub?, parent?, label? }] — see <microsite>/model/parts.js
+// partsMeta: [{ id, group, off:[x,y,z], swing?, sub?, parent?, label?, split?, spread? }] — see <microsite>/model/parts.js
 //   parent: id of the part this one is a detail of. Selecting the detail keeps the parent
 //           half-visible; selecting the parent keeps its details visible.
+//   split:  the part has a copy on each side (two guns, two boats): in the exploded view each direct
+//           child of its object moves on its own, and off[2] is how far it moves outward, to its own side.
+//   spread: how much of the radial spread (setSpread) the part takes (default 1; 0 = none).
 export function createRegistry(partsMeta, state) {
   const PART = Object.fromEntries(partsMeta.map((p, i) => [p.id, { ...p, index: i }]));
   const partObjs = {}, partMats = {}, matCache = {}, pickables = [], explodables = [];
   const ACC = new THREE.Color('#ff6a1a'), BLACK = new THREE.Color(0);
   let pivot = null;          // optional group that turns as a whole (explode offsets follow it)
   let cutMap = null;         // cutaway: { key: planes[] } for materials with userData.cut = key
+  // Radial spread of the exploded view: each object also moves away from the model's centre by
+  // spread × its own centre (model frame), so the parts fan out fore and aft and to the sides, not only up.
+  const spread = new THREE.Vector3();
 
   // Give every mesh under obj the part id and a per-part material.
   // Call again for groups whose children are rebuilt at runtime (ropes, helpers).
@@ -50,19 +56,36 @@ export function createRegistry(partsMeta, state) {
     const P = PART[id]; if (!P) { console.warn('unknown part', id); return obj; }
     adopt(id, obj, o);
     (partObjs[id] ||= []).push(obj);
-    explodables.push({ obj, base: obj.position.clone(), off: new THREE.Vector3(...(o.off || P.off || [0, 0, 0])), swing: o.swing ?? !!P.swing });
+    const off = new THREE.Vector3(...(o.off || P.off || [0, 0, 0])), swing = o.swing ?? !!P.swing;
+    for (const it of P.split ? obj.children : [obj]) explodables.push({ id, obj: it, base: it.position.clone(), off, swing, split: !!P.split, k: P.spread ?? 1, move: null, cur: new THREE.Vector3() });
     return obj;
   }
   const add = (parent, id, obj, o) => { parent.add(obj); return reg(id, obj, o); };
-  const offsetOf = id => new THREE.Vector3(...(PART[id].off || [0, 0, 0])).multiplyScalar(state.explode);
+  // Where the part is now, relative to its assembled place (label anchors): the mean over its objects.
+  function offsetOf(id) {
+    const v = new THREE.Vector3(); let n = 0;
+    for (const ex of explodables) if (ex.id === id) { v.add(ex.cur); n++; }
+    return n ? v.divideScalar(n) : v;
+  }
   // The base (assembled) position of an object changed at runtime (e.g. a turning mount).
   function rebase(obj) { const ex = explodables.find(e => e.obj === obj); if (ex) ex.base.copy(obj.position); }
 
+  // Full exploded offset of one object, worked out once from where its centre is (in its parent's frame).
+  const _b = new THREE.Box3(), _c = new THREE.Vector3();
+  function moveOf(ex) {
+    _b.setFromObject(ex.obj);
+    if (_b.isEmpty()) _c.set(0, 0, 0); else { _b.getCenter(_c); ex.obj.parent?.worldToLocal(_c); }
+    _c.sub(ex.obj.position).add(ex.base);   // the centre when assembled
+    const m = ex.off.clone();
+    if (ex.split) m.z = Math.abs(_c.z) > .15 ? Math.sign(_c.z) * ex.off.z : 0;
+    return m.addScaledVector(_c.multiply(spread), ex.k);
+  }
   function applyExplode() {
     for (const ex of explodables) {
-      const off = ex.off.clone().multiplyScalar(state.explode);
-      if (ex.swing && pivot) off.applyAxisAngle(UP, -pivot.rotation.y);   // offsets are given in the model frame; swing parts sit inside the pivot
-      ex.obj.position.copy(ex.base).add(off);
+      ex.move ||= moveOf(ex);
+      const off = ex.cur.copy(ex.move).multiplyScalar(state.explode), d = off.clone();
+      if (ex.swing && pivot) d.applyAxisAngle(UP, -pivot.rotation.y);   // offsets are given in the model frame; swing parts sit inside the pivot
+      ex.obj.position.copy(ex.base).add(d);
     }
   }
 
@@ -96,5 +119,6 @@ export function createRegistry(partsMeta, state) {
     for (const id in partMats) for (const m of partMats[id]) if (m.userData.cut) { m.clippingPlanes = cutMap?.[m.userData.cut] || []; m.needsUpdate = true; }
   }
 
-  return { PART, partObjs, partMats, pickables, reg, adopt, add, rebase, offsetOf, applyExplode, applyLook, paint, setCut, setPivot: p => { pivot = p; } };
+  return { PART, partObjs, partMats, pickables, reg, adopt, add, rebase, offsetOf, applyExplode, applyLook, paint, setCut, setPivot: p => { pivot = p; },
+    setSpread: ([x, y, z]) => { spread.set(x, y, z); for (const ex of explodables) ex.move = null; } };
 }

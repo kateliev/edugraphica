@@ -92,7 +92,22 @@ Register every mesh with `registry.add(parent, partId, object, options)`. Each p
 material copies, so it can glow when selected and fade when another part is selected. Part ids must
 match the keys under `parts` in the model's strings. A material with `userData.cut = '<key>'` is
 clipped by the planes the model passes to `registry.setCut({ <key>: planes })` — this is how the
-Drazki cutaway works.
+Drazki cutaway works. Keep the number of planes the same when the cut is closed (planes that clip
+nothing), so switching it on and off never rebuilds the shaders.
+
+**Exploded view.** Each part moves by its `off` from `parts.js`. `registry.setSpread([x, y, z])` adds a
+radial move: every object also moves by that share of its own distance from the model's centre (Drazki:
+20 % along the length), so the parts open fore and aft, not only upward. A part with `split: true` has a
+copy on each side (two guns, two boats): each direct child of its object moves on its own, and `off[2]`
+sends it out to its own side. `spread: 0` keeps a part out of the radial move (hull, decks, details that
+ride on their parent).
+
+**Speed.** The explorer compiles every shader before the first frame, hidden objects included, so the
+driver can build them side by side (`precompile` in `explorer.js`; on Drazki the first frame went from
+about 3 s to 1 s). Things that change the shader of every material — adding or removing fog or lights,
+changing the number of clipping planes — would undo that later; change their values instead (the Studio
+pushes the fog out of reach rather than removing it). Drazki hides everything below decks outside the
+cutaway (parts with `inside: true` and the inside face of the hull plating).
 
 ## Adding a microsite
 

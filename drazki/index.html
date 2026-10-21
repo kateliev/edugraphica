@@ -22,6 +22,22 @@
   "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.147.0/examples/jsm/"
 } }
 </script>
+<!-- fetch every module at once instead of level by level as the imports are found (after the import map) -->
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.module.js">
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/jsm/controls/OrbitControls.js">
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/jsm/utils/BufferGeometryUtils.js">
+<link rel="modulepreload" href="../assets/js/core/config.js">
+<link rel="modulepreload" href="../assets/js/core/i18n.js">
+<link rel="modulepreload" href="../assets/js/core/sitenav.js">
+<link rel="modulepreload" href="../assets/js/explorer/explorer.js">
+<link rel="modulepreload" href="../assets/js/explorer/geometry.js">
+<link rel="modulepreload" href="../assets/js/explorer/surface.js">
+<link rel="modulepreload" href="../assets/js/explorer/stage.js">
+<link rel="modulepreload" href="../assets/js/explorer/registry.js">
+<link rel="modulepreload" href="../assets/js/explorer/ui.js">
+<link rel="modulepreload" href="model/drazki.js">
+<link rel="modulepreload" href="model/parts.js">
+<link rel="modulepreload" href="model/shore.js">
 </head>
 <body class="explorer">
 <div id="app">
