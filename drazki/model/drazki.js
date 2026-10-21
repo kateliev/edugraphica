@@ -291,10 +291,14 @@ export function createDrazki({ registry, M, t }) {
   // forecastle, level with the top of the forecastle (CAD reconstruction, Draganov 2025; owner's notes).
   // They start flush with the back of the tower and keep their width forward; the outer edge stands out
   // over the hull side. Between them the plain forecastle deck forms an alley where the
-  // hand winch stands. Perforated rib brackets carry the aft half of each wing; a half breakwater closes the
-  // forward half down to the hull and curves in at the front.
+  // hand winch stands. Perforated rib brackets carry each wing along its whole length, and the side under
+  // it stays open; only the front is closed by a half breakwater curved like a snow plough (owner).
   const PY = 2.0, WING = { xa0: 26.0, xa1: 29.6, yHull: 1.15, alley: .6, ct: .83, ctx: 27.58 };
   const wingOut = xa => hb(xa, WING.yHull) - .01;   // outer edge: over the hull side at yHull
+  // Front of each wing: the half breakwater, a curve from the outer corner of the wing in towards the alley and
+  // forward to its point at the alley edge, hollow towards the bow like a snow plough (owner).
+  const BW = { a: [WING.xa1, wingOut(WING.xa1) + .006], c: [WING.xa1 + .08, WING.alley + .3], b: [WING.xa1 + .55, WING.alley + .02] };
+  const bwAt = u => [0, 1].map(k => (1 - u) ** 2 * BW.a[k] + 2 * u * (1 - u) * BW.c[k] + u * u * BW.b[k]);
   // Height where something standing at |z| = w meets the hull (on the side below the deck edge, else on the deck).
   const yUnder = (xa, w) => {
     const e = edge(xa); if (w <= e.w) return deckY(xa, w);
@@ -315,16 +319,17 @@ export function createDrazki({ registry, M, t }) {
     const ribs = [], bw = [];
     for (const sd of [1, -1]) {
       // plan outline: inner edge (stepping in at the front of the tower), front, outer edge back to the tower
-      const pts = [[WING.xa0, WING.ct], [WING.ctx, WING.ct], [WING.ctx, WING.alley], [WING.xa1, WING.alley]];
+      const pts = [[WING.xa0, WING.ct], [WING.ctx, WING.ct], [WING.ctx, WING.alley], [BW.b[0], WING.alley]];
+      for (let i = 15; i > 0; i--) { const [xa, z] = bwAt(i / 16); pts.push([xa, Math.max(z - .006, WING.alley)]); }   // the front follows the breakwater
       for (let i = xs.length - 1; i >= 0; i--) pts.push([xs[i], wingOut(xs[i])]);
       const sh = new THREE.Shape(); pts.forEach(([xa, z], i) => (i ? sh.lineTo(X(xa), -sd * z) : sh.moveTo(X(xa), -sd * z))); sh.closePath();
       const gg = new THREE.ShapeGeometry(sh); gg.rotateX(-Math.PI / 2); gg.translate(0, PY, 0);
       g.add(mesh(gg, gm));
       const rim = pts.concat([pts[0]]).map(([xa, z]) => new V3(X(xa), PY - .02, sd * z));
       g.add(tube(polyCurve(rim), .026, MAT.grey, rim.length * 2));
-      // rib brackets under the aft half of the wing: steel plates with round lightening holes, from the hull
-      // side and the deck edge up to the underside of the walking plate; they narrow to a point on the hull
-      for (const xa of [26.1, 26.75, 27.4]) {
+      // rib brackets under the wing: steel plates with round lightening holes, from the hull side and the deck
+      // edge up to the underside of the walking plate; they narrow to a point on the hull
+      for (const xa of [26.1, 26.75, 27.4, 28.05, 28.7]) {
         const e = edge(xa), zo = wingOut(xa) - .02, zi = Math.max(e.w - .25, (xa < WING.ctx ? WING.ct : WING.alley) + .05);
         const yl = WING.yHull - .12, zh = hb(xa, yl), k = new THREE.Shape();
         k.moveTo(zi, PY - .03); k.lineTo(zo, PY - .03); k.lineTo(zh, yl); k.lineTo(e.w, e.h - .01); k.lineTo(zi, deckY(xa, zi) - .01); k.closePath();
@@ -335,15 +340,13 @@ export function createDrazki({ registry, M, t }) {
         if (sd < 0) kg.scale(1, 1, -1);
         ribs.push(kg);
       }
-      // half breakwater: a plate along the outer edge of the forward half of the wing, from the walking plate
-      // down to the hull side, curving in at the front to the edge of the alley, where it rises and leans forward
+      // half breakwater, only at the front of the wing (BW): a curved plate like a snow plough, from the hull
+      // and the deck up past the walking plate, its top leaning forward; the side behind it stays open
       const path = [];
-      for (let xa = 27.9; xa < 29.45; xa += .1) path.push({ xa, z: wingOut(xa) + .006, u: 0 });
-      const a = [29.45, wingOut(29.45) + .006], c = [29.95, wingOut(WING.xa1)], b = [30.0, WING.alley + .02];
-      for (let i = 0; i <= 12; i++) { const u = i / 12; path.push({ xa: (1 - u) ** 2 * a[0] + 2 * u * (1 - u) * c[0] + u * u * b[0], z: (1 - u) ** 2 * a[1] + 2 * u * (1 - u) * c[1] + u * u * b[1], u }); }
+      for (let i = 0; i <= 16; i++) { const u = i / 16, [xa, z] = bwAt(u); path.push({ xa, z, u }); }
       const pos = [], idx = [], top = [];
       path.forEach(({ xa, z, u }, i) => {
-        const yt = PY + .04 + .14 * u, lean = .05 * u;
+        const yt = PY + .12 + .08 * u, lean = .06 + .03 * u;
         pos.push(X(xa), yUnder(xa, z) - .03, sd * z, X(xa) + lean, yt, sd * z); top.push(new V3(X(xa) + lean, yt, sd * z));
         if (i) idx.push(2 * i - 2, 2 * i - 1, 2 * i, 2 * i - 1, 2 * i + 1, 2 * i);
       });
@@ -409,7 +412,7 @@ export function createDrazki({ registry, M, t }) {
   // Portholes: brass rims and dark glass along the forecastle and the officers' cabin.
   {
     const g = new THREE.Group();
-    const sets = { fwd: [[28.7, 1.42], [30.0, 1.45], [31.3, 1.48], [32.6, 1.52], [33.9, 1.56]], main: [[4.9, .82], [6.2, .8], [7.5, .78], [8.8, .76]] };
+    const sets = { fwd: [[28.375, 1.42], [30.0, 1.45], [31.3, 1.48], [32.6, 1.52], [33.9, 1.56]], main: [[4.9, .82], [6.2, .8], [7.5, .78], [8.8, .76]] };
     for (const key in sets) {
       const rims = [], glass = [];
       for (const side of [1, -1]) for (const [xa, y] of sets[key]) {
