@@ -21,16 +21,18 @@
 //     does not look mottled. Streaks run along the mesh's own y axis (up for most parts).
 // Works with MeshStandardMaterial and MeshPhysicalMaterial. All materials share one strength
 // (SURFACE_NOISE.value, 0…1): ?noise=0 in the address turns it off to compare.
+import * as THREE from 'three';
+
 export const SURFACE_NOISE = { value: new URLSearchParams(location.search).get('noise') === '0' ? 0 : 1 };
 // Strength of the tilts alone (wave, dent, peel): a low sun shows them gently, a high one too clearly,
 // so each scene palette sets its own (palette.relief, applied by the explorer).
 export const SURFACE_RELIEF = { value: 1 };
 
 const DEFAULTS = { mottle: .4, color: .03, rough: .1, wave: .16, waveFreq: 1.1, dent: 0, dentFreq: 5, streak: 0, streakFreq: 9, peel: .012, peelFreq: 90, peelRough: .05 };
-const f = v => Number(v).toFixed(5);   // GLSL float literal
 
 const NOISE_GLSL = `
 uniform float egStrength, egRelief;
+uniform vec4 egA, egB, egC;   // (mottle, color, rough, peelRough), (wave, waveFreq, dent, dentFreq), (streak, streakFreq, peel, peelFreq)
 varying vec3 vEgPos, vEgN0, vEgN1, vEgN2, vEgNrm;
 float egHash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 // value noise in 0…1 (x) and its gradient (yzw); quintic blending keeps the gradient smooth across cells
@@ -45,40 +47,43 @@ vec4 egNoiseD(vec3 x) {
 }
 float egFadeAt(float freq) { return 1.0 - smoothstep(0.25, 0.8, length(fwidth(vEgPos)) * freq); }   // 1 while the pattern is bigger than a pixel`;
 
+// The settings are uniforms, not numbers written into the shader, so every material with surface noise
+// shares one shader (per three.js variant): fewer shaders to compile when the page opens.
 function install(mat) {
-  const o = mat.userData.noise;
+  const o = mat.userData.noise, V = (a, b, c, d) => ({ value: new THREE.Vector4(a, b, c, d) });
+  const u = { egA: V(o.mottle, o.color, o.rough, o.peelRough), egB: V(o.wave, o.waveFreq, o.dent, o.dentFreq), egC: V(o.streak, o.streakFreq, o.peel, o.peelFreq) };
   mat.onBeforeCompile = shader => {
-    shader.uniforms.egStrength = SURFACE_NOISE; shader.uniforms.egRelief = SURFACE_RELIEF;
+    shader.uniforms.egStrength = SURFACE_NOISE; shader.uniforms.egRelief = SURFACE_RELIEF; Object.assign(shader.uniforms, u);
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vEgPos, vEgN0, vEgN1, vEgN2, vEgNrm;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
         vEgPos = transformed; vEgNrm = objectNormal;
         vEgN0 = normalMatrix[0]; vEgN1 = normalMatrix[1]; vEgN2 = normalMatrix[2];   // mesh space → view space for the tilts`);
-    const sf = o.streakFreq;
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\n${NOISE_GLSL}`)
       .replace('#include <color_fragment>', `#include <color_fragment>
-        float egMottle = egNoiseD(vEgPos * ${f(o.mottle)}).x * 0.65 + egNoiseD(vEgPos * ${f(o.mottle * 2.6)} + 7.3).x * 0.35;
-        float egPeelFade = egFadeAt(${f(o.peelFreq)});
+        float egMottle = egNoiseD(vEgPos * egA.x).x * 0.65 + egNoiseD(vEgPos * egA.x * 2.6 + 7.3).x * 0.35;
+        float egPeelFade = egFadeAt(egC.w);
         float egStreak = 0.0;
-        ${o.streak > 0 ? `{   // long thin noise along y: streaks; only on faces that stand upright
-          float s = egNoiseD(vEgPos * vec3(${f(sf)}, ${f(sf * .06)}, ${f(sf)}) + 2.0).x * 0.6 + egNoiseD(vEgPos * vec3(${f(sf * 2.3)}, ${f(sf * .12)}, ${f(sf * 2.3)}) + 9.0).x * 0.4;
-          egStreak = smoothstep(0.5, 0.85, s) * smoothstep(0.35, 0.85, 1.0 - abs(normalize(vEgNrm).y)) * egFadeAt(${f(sf * 2.3)}) * ${f(o.streak)};
-        }` : ''}
-        diffuseColor.rgb *= (1.0 + egStrength * ${f(o.color)} * (egMottle - 0.5) * 2.0) * (1.0 - egStrength * egStreak);`)
+        if (egC.x > 0.0) {   // long thin noise along y: streaks; only on faces that stand upright
+          float sf = egC.y;
+          float s = egNoiseD(vEgPos * vec3(sf, sf * 0.06, sf) + 2.0).x * 0.6 + egNoiseD(vEgPos * vec3(sf * 2.3, sf * 0.12, sf * 2.3) + 9.0).x * 0.4;
+          egStreak = smoothstep(0.5, 0.85, s) * smoothstep(0.35, 0.85, 1.0 - abs(normalize(vEgNrm).y)) * egFadeAt(sf * 2.3) * egC.x;
+        }
+        diffuseColor.rgb *= (1.0 + egStrength * egA.y * (egMottle - 0.5) * 2.0) * (1.0 - egStrength * egStreak);`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-        roughnessFactor = clamp(roughnessFactor + egStrength * (${f(o.rough)} * (egMottle - 0.5) * 2.0 + ${f(o.peelRough)} * (1.0 - egPeelFade) + egStreak * 1.5), 0.04, 1.0);`)
+        roughnessFactor = clamp(roughnessFactor + egStrength * (egA.z * (egMottle - 0.5) * 2.0 + egA.w * (1.0 - egPeelFade) + egStreak * 1.5), 0.04, 1.0);`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
         {
-          vec3 egG = (egNoiseD(vEgPos * ${f(o.waveFreq)} + 1.7).yzw + 0.45 * egNoiseD(vEgPos * ${f(o.waveFreq * 2.3)} + 11.0).yzw) * ${f(o.wave)} * egFadeAt(${f(o.waveFreq * 2.3)})
-                     * (1.0 - 0.6 * smoothstep(0.012, 0.05, length(fwidth(vEgPos)) * ${f(o.waveFreq)}))
-                   + egNoiseD(vEgPos * ${f(o.dentFreq)} + 3.3).yzw * ${f(o.dent)} * egFadeAt(${f(o.dentFreq)})
-                   + egNoiseD(vEgPos * ${f(o.peelFreq)} + 5.0).yzw * ${f(o.peel)} * egPeelFade;
+          vec3 egG = (egNoiseD(vEgPos * egB.y + 1.7).yzw + 0.45 * egNoiseD(vEgPos * egB.y * 2.3 + 11.0).yzw) * egB.x * egFadeAt(egB.y * 2.3)
+                     * (1.0 - 0.6 * smoothstep(0.012, 0.05, length(fwidth(vEgPos)) * egB.y))
+                   + egNoiseD(vEgPos * egB.w + 3.3).yzw * egB.z * egFadeAt(egB.w)
+                   + egNoiseD(vEgPos * egC.w + 5.0).yzw * egC.z * egPeelFade;
           egG = mat3(vEgN0, vEgN1, vEgN2) * egG * egStrength * egRelief;
           normal = normalize(normal - (egG - dot(egG, normal) * normal));
         }`);
   };
-  mat.customProgramCacheKey = () => 'eg-noise4:' + JSON.stringify(o);
+  mat.customProgramCacheKey = () => 'eg-noise5';
   mat.needsUpdate = true;
   return mat;
 }

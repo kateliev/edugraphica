@@ -1629,7 +1629,10 @@ export function createDrazki({ registry, M, t }) {
       box(x0, y0, x1, y1) { const [u0, v0] = px([x0, y1]), [u1, v1] = px([x1, y0]); c.fillRect(u0, v0, u1 - u0, v1 - v0); },
     };
     const sh = [P.c[0], P.c[1] + .05];
-    for (const [kn, an, toe] of P.legs) { d.line([P.p, kn], .15); d.line([kn, an], .11); d.line([an, toe], .085); }
+    for (const [kn, an, toe] of P.legs) {   // the foot: 70 % of the drawn ankle-to-toe line, slim, so the boots stay boot-sized
+      const ft = [an[0] + (toe[0] - an[0]) * .7, an[1] + (toe[1] - an[1]) * .7 - .01];
+      d.line([P.p, kn], .15); d.line([kn, an], .1); d.line([an, ft], .06);
+    }
     d.line([P.c, P.p], .27); d.line([P.c, P.head], .1);
     for (const [el, wr] of P.arms) { d.line([sh, el], .095); d.line([el, wr], .075); d.dot(...wr, .045); }
     d.dot(...P.head, .105);

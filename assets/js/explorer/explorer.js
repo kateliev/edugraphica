@@ -81,9 +81,23 @@ export async function startExplorer({ site, ns, createModel, parts, groups, pain
     ui.updateLabels();
     requestAnimationFrame(frame);
   }
-  precompile(renderer, scene, camera);
+  precompile(renderer, scene, camera, shown);   // what the first frame shows
   document.getElementById('loading')?.remove();
   frame();
+  // Then what is hidden now (studio floor, cutaway, people …), one hidden group at a time in idle moments
+  // while the first view is on screen, so later switches do not stall and no single pause is long.
+  // Groups that bring no new kind of material (the hidden smoke puffs) are skipped.
+  const kind = m => [m.type, !!m.map, m.side, m.transparent, m.clippingPlanes?.length, m.customProgramCacheKey()].join();
+  const seen = new Set(), hidden = [];
+  scene.traverse(o => { if (o.material && shown(o)) seen.add(kind(o.material)); });
+  scene.traverse(o => {
+    if (o.visible || !shown(o.parent)) return;
+    let fresh = false; o.traverse(c => { if (c.material && !seen.has(kind(c.material))) { seen.add(kind(c.material)); fresh = true; } });
+    if (fresh) hidden.push(o);
+  });
+  const idle = f => (window.requestIdleCallback || setTimeout)(f, { timeout: 2000 });
+  const warm = () => { const g = hidden.shift(); if (!g) return; precompile(renderer, scene, camera, o => under(o, g)); idle(warm); };
+  setTimeout(() => idle(warm), 1000);
   document.fonts?.ready.then(() => model.redraw?.());
 
   // Handle for later stages (lessons, quizzes) and for debugging from the console.
@@ -92,27 +106,32 @@ export async function startExplorer({ site, ns, createModel, parts, groups, pain
   return window.edugraphica;
 }
 
-// Compile every shader before the first frame, hidden parts included (cutaway, interior, studio): the driver
-// can then build them side by side instead of one at a time between draw calls (Drazki: 3.0 s → 1.0 s).
-// three r147's renderer.compile() keys each shader with the clipping state the last draw left behind, so the
-// materials with clipping planes get their own round, after a tiny off-screen draw that sets that state.
-function precompile(renderer, scene, camera) {
-  const groups = new Map(), clipped = new Map();   // "planes|intersection" → objects; object → its material
+const shown = o => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
+const under = (o, g) => { for (; o; o = o.parent) if (o === g) return true; return false; };
+
+// Compile the shaders of the objects that pass take(object) in one batch, before they are drawn: a shader
+// built in the middle of a frame costs far more (here about 1 s each, against a fraction of that in a batch).
+// three r147's renderer.compile() keys each shader with the clipping state the last draw left behind, so
+// objects are compiled in one round per clipping state, after a tiny off-screen draw that sets that state.
+function precompile(renderer, scene, camera, take) {
+  const mats = new Map(), groups = new Map();   // object → its material; "planes|intersection" → objects that take part
   scene.traverse(o => {
-    const m = o.material; if (!m?.clippingPlanes?.length) return;
-    const k = `${m.clippingPlanes.length}|${m.clipIntersection}`;
-    (groups.get(k) || groups.set(k, []).get(k)).push(o); clipped.set(o, m);
+    const m = o.material; if (!m) return;
+    mats.set(o, m);
+    if (!take(o)) return;
+    const k = m.clippingPlanes?.length ? `${m.clippingPlanes.length}|${m.clipIntersection}` : '';
+    (groups.get(k) || groups.set(k, []).get(k)).push(o);
   });
   const rt = new THREE.WebGLRenderTarget(1, 1), probe = new THREE.Scene(), dot = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshBasicMaterial());
   dot.frustumCulled = false; probe.add(dot);
   const prime = m => { dot.material = m; renderer.setRenderTarget(rt); renderer.render(probe, camera); renderer.setRenderTarget(null); };
-  const only = list => { for (const [o, m] of clipped) o.material = list.includes(o) ? m : null; };   // compile() skips objects without one
-  prime(dot.material); only([]); renderer.compile(scene, camera);
-  for (const list of groups.values()) {
-    const m = clipped.get(list[0]);
-    prime(new THREE.MeshBasicMaterial({ clippingPlanes: m.clippingPlanes, clipIntersection: m.clipIntersection }));
-    only(list); renderer.compile(scene, camera);
+  for (const [k, list] of groups) {   // one round per clipping state; compile() skips objects without a material
+    const m = mats.get(list[0]);
+    prime(k ? new THREE.MeshBasicMaterial({ clippingPlanes: m.clippingPlanes, clipIntersection: m.clipIntersection }) : new THREE.MeshBasicMaterial());
+    const set = new Set(list);
+    for (const [o, mo] of mats) o.material = set.has(o) ? mo : null;
+    renderer.compile(scene, camera);
   }
-  for (const [o, m] of clipped) o.material = m;
+  for (const [o, m] of mats) o.material = m;
   rt.dispose(); dot.geometry.dispose();
 }

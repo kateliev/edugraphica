@@ -102,12 +102,17 @@ copy on each side (two guns, two boats): each direct child of its object moves o
 sends it out to its own side. `spread: 0` keeps a part out of the radial move (hull, decks, details that
 ride on their parent).
 
-**Speed.** The explorer compiles every shader before the first frame, hidden objects included, so the
-driver can build them side by side (`precompile` in `explorer.js`; on Drazki the first frame went from
-about 3 s to 1 s). Things that change the shader of every material — adding or removing fog or lights,
-changing the number of clipping planes — would undo that later; change their values instead (the Studio
-pushes the fog out of reach rather than removing it). Drazki hides everything below decks outside the
-cutaway (parts with `inside: true` and the inside face of the hull plating).
+**Speed.** Most of the load time is compiling shaders, and every shader counts: on a computer that has
+not seen the page before, each one costs a few tenths of a second, and one built in the middle of a frame
+costs far more. So the explorer compiles, in one batch before the first frame, only the shaders of what is
+visible (`precompile` in `explorer.js`); the hidden groups (studio floor, cutaway, people) follow one at a
+time in idle moments after the first view is on screen. Keep the number of different shaders low: surface
+noise settings are uniforms, so all noisy materials share a shader. Things that change the shader of every
+material — adding or removing fog or lights, changing the number of clipping planes — would force a
+rebuild; change their values instead (the Studio pushes the fog out of reach rather than removing it).
+Drazki hides everything below decks outside the cutaway (parts with `inside: true` and the inside face of
+the hull plating). To test a first visit, make every shader new: add a random comment to
+`THREE.ShaderChunk.common` before the model starts (the browser keeps compiled shaders between visits).
 
 ## Adding a microsite
 
