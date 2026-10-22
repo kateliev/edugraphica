@@ -1,0 +1,12 @@
+/* Roman Thermae of Odessos — microsite theme.
+   Loaded by every page of this microsite, after the site-wide tokens.css, base.css and the
+   layout file. Change the look of the whole microsite here by overriding the design tokens;
+   never restyle shared components and never edit assets/css/ for one microsite. */
+
+:root {
+  --sea: #9a4b2f;                 /* links: a Roman terracotta */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --sea: #e39b7c; }
+}
+:root[data-theme="dark"] { --sea: #e39b7c; }

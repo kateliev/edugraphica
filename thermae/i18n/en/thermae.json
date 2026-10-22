@@ -1,0 +1,71 @@
+{
+  "_license": "CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/) · © 2026 Vassil Kateliev · edugraphica.org",
+  "_status": "draft",
+  "_sources": "documentation/varna-thermae-sources.md",
+  "pageTitle": "Roman Thermae of Odessos",
+  "title": "Thermae",
+  "titleAccent": 0,
+  "overview": {
+    "chip": "Overview",
+    "badge": "About AD 200",
+    "heading": "Roman Thermae of Odessos",
+    "text": "Prototype model, work in progress.",
+    "hint": ""
+  },
+  "groups": {
+    "town": "Around the baths",
+    "rooms": "Entrances and halls",
+    "baths": "Baths",
+    "service": "Service",
+    "structure": "Structure"
+  },
+  "controls": {
+    "roofs": "Roofs",
+    "roofsTitle": "Show or take off the vaults and roofs",
+    "section": "Section",
+    "sectionTitle": "Cut the building in half along its axis",
+    "people": "People",
+    "peopleTitle": "Show people for scale (1.70 m tall)"
+  },
+  "parts": {
+    "portico": {
+      "name": "Portico"
+    },
+    "shops": {
+      "name": "Shops"
+    },
+    "vestibules": {
+      "name": "Vestibules"
+    },
+    "basilica": {
+      "name": "Basilica hall"
+    },
+    "apodyteria": {
+      "name": "Apodyteria"
+    },
+    "frigidarium": {
+      "name": "Frigidarium"
+    },
+    "tepidarium": {
+      "name": "Tepidarium"
+    },
+    "caldarium": {
+      "name": "Caldarium"
+    },
+    "heatedRooms": {
+      "name": "Heated rooms"
+    },
+    "pools": {
+      "name": "Pools and fountains"
+    },
+    "praefurnium": {
+      "name": "Praefurnium and south terrace"
+    },
+    "latrines": {
+      "name": "Latrines"
+    },
+    "walls": {
+      "name": "Walls"
+    }
+  }
+}

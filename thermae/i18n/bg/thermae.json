@@ -1,0 +1,71 @@
+{
+  "_license": "CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/) · © 2026 Vassil Kateliev · edugraphica.org",
+  "_status": "draft",
+  "_sources": "documentation/varna-thermae-sources.md",
+  "pageTitle": "Римските терми на Одесос",
+  "title": "Терми",
+  "titleAccent": 0,
+  "overview": {
+    "chip": "Общ поглед",
+    "badge": "Около 200 г.",
+    "heading": "Римските терми на Одесос",
+    "text": "Работен модел, в процес на изграждане.",
+    "hint": ""
+  },
+  "groups": {
+    "town": "Около термите",
+    "rooms": "Входове и зали",
+    "baths": "Бани",
+    "service": "Обслужване",
+    "structure": "Конструкция"
+  },
+  "controls": {
+    "roofs": "Покриви",
+    "roofsTitle": "Покажи или махни сводовете и покривите",
+    "section": "Разрез",
+    "sectionTitle": "Разрежи сградата наполовина по оста ѝ",
+    "people": "Хора",
+    "peopleTitle": "Покажи хора за мащаб (1,70 м)"
+  },
+  "parts": {
+    "portico": {
+      "name": "Портик"
+    },
+    "shops": {
+      "name": "Магазини"
+    },
+    "vestibules": {
+      "name": "Вестибюли"
+    },
+    "basilica": {
+      "name": "Базиликална зала"
+    },
+    "apodyteria": {
+      "name": "Аподитерии"
+    },
+    "frigidarium": {
+      "name": "Фригидарий"
+    },
+    "tepidarium": {
+      "name": "Тепидарий"
+    },
+    "caldarium": {
+      "name": "Калдарий"
+    },
+    "heatedRooms": {
+      "name": "Отопляеми помещения"
+    },
+    "pools": {
+      "name": "Басейни и чешми"
+    },
+    "praefurnium": {
+      "name": "Префурниум и южна тераса"
+    },
+    "latrines": {
+      "name": "Латрини"
+    },
+    "walls": {
+      "name": "Зидове"
+    }
+  }
+}

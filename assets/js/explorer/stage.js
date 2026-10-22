@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { canvasTex, rnd } from './geometry.js';
 
-export const COL = { top: '#2c82cf', mid: '#8fc9ee', horizon: '#d6ecf8', deep: '#0b4c70', shallow: '#1d88ad', skyRefl: '#a7d6f1', seabed: '#0e5677' };
+export const COL = { top: '#2c82cf', mid: '#8fc9ee', horizon: '#d6ecf8', deep: '#0b4c70', shallow: '#1d88ad', skyRefl: '#a7d6f1', seabed: '#0e5677', ground: '#9a9670' };
 const HB_N = 32;   // waterline samples passed to the water shader
 
 // Light of a scene besides COL; a palette may override any of these keys too.
@@ -19,8 +19,10 @@ const LIGHT = { sun: '#fff3df', sunI: 2.1, sunDir: [5, 8, 4.5], hemiSky: '#dff1f
   exposure: 1, glow: '#ffffff', glowA: 0, clouds: 0, cloudC: '#ffffff', cloudS: '#9aa9b6' };
 
 // opts: { scale = 1, view: { minDistance, maxDistance, fov }, marks = false, scenery = true, shadowMap = 2048,
-//         waterAlpha = .56, palette: { …COL/LIGHT keys }, palettes: [{ key, …COL/LIGHT keys }] }
+//         waterAlpha = .56, ground, palette: { …COL/LIGHT keys }, palettes: [{ key, …COL/LIGHT keys }] }
 //   waterAlpha: how opaque the sea is next to the model (lower shows more of the hull under water).
+//   ground: { y } — a model on land (a building): no sea, a plain far ground at height y instead
+//   (colour palette.ground); the model adds its own terrain near it to `scenery`.
 //   palette overrides the base sky, sea and light (e.g. a darker sea). palettes are presets on top of
 //   that base (the first one is the start): setPalette(key) switches, onPalette(fn) lets a model
 //   recolour its own scenery. scenery: false leaves out the islands and clouds.
@@ -146,6 +148,14 @@ export function createStage(canvas, opts = {}) {
   water.rotation.x = -Math.PI / 2; water.renderOrder = 2; scene.add(water);
   const seabed = new THREE.Mesh(new THREE.PlaneGeometry(1600 * k, 1600 * k), new THREE.MeshBasicMaterial({ color: C.seabed }));
   seabed.rotation.x = -Math.PI / 2; seabed.position.y = -5 * k; scene.add(seabed);
+  // ---- land: a far ground in place of the sea (made only for models on land, so a ship's page has no extra shader)
+  const onLand = !!opts.ground;
+  let ground = null;
+  if (onLand) {
+    ground = new THREE.Mesh(new THREE.PlaneGeometry(1600 * k, 1600 * k), new THREE.MeshStandardMaterial({ color: C.ground, roughness: 1 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.y = opts.ground.y ?? 0; scene.add(ground);
+    water.visible = seabed.visible = false;
+  }
 
   // ---- distant islands, clouds and (for sailing models) two race marks
   const scenery = new THREE.Group(); scene.add(scenery);   // a model may add its own backdrop here (shown on the water only)
@@ -194,7 +204,8 @@ export function createStage(canvas, opts = {}) {
   }
   function setMode(mode, stageColor) {
     const w = mode === 'water';
-    water.visible = scenery.visible = sky.visible = seabed.visible = w; studio.visible = !w;
+    scenery.visible = sky.visible = w; studio.visible = !w;
+    water.visible = seabed.visible = w && !onLand; if (ground) ground.visible = w;
     // the studio has no haze: push the fog out of reach instead of removing it, which would rebuild every shader
     fog.near = w ? 70 * k : 1e7; fog.far = w ? 420 * k : 2e7;
     scene.background = w ? null : new THREE.Color(stageColor || '#d3e8f5');
@@ -213,6 +224,7 @@ export function createStage(canvas, opts = {}) {
     }
     waterUniforms.uDeep.value.set(p.deep); waterUniforms.uShallow.value.set(p.shallow); waterUniforms.uSkyC.value.set(p.skyRefl); waterUniforms.uHorizon.value.set(p.horizon);
     seabed.material.color.set(p.seabed); fog.color.set(p.horizon); envGround.material.color.set(p.envGround);
+    ground?.material.color.set(p.ground);
     hemi.color.set(p.hemiSky); hemi.groundColor.set(p.hemiGround); hemi.intensity = p.hemiI;
     sun.color.set(p.sun); sun.intensity = p.sunI; sun.position.copy(SUN).multiplyScalar(14 * k);
     renderer.toneMappingExposure = p.exposure;

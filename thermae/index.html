@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Roman Thermae of Odessos · Edugraphica</title>
+<meta name="description" content="Interactive 3D model of the Roman Thermae of Odessos (Varna, about AD 200): the bathing halls, pools, heating and the shops around them.">
+<meta name="copyright" content="© 2026 Vassil Kateliev · edugraphica.org">
+<link rel="license" href="https://polyformproject.org/licenses/noncommercial/1.0.0" title="Code: PolyForm Noncommercial 1.0.0">
+<link rel="license" href="https://creativecommons.org/licenses/by-nc-sa/4.0/" title="Content: CC BY-NC-SA 4.0">
+<link rel="icon" href="../assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- style cascade: site-wide tokens and components → explorer layout → this microsite's theme -->
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/explorer.css">
+<link rel="stylesheet" href="site.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.147.0/examples/jsm/"
+} }
+</script>
+<!-- fetch every module at once instead of level by level as the imports are found (after the import map) -->
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.module.js">
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/jsm/controls/OrbitControls.js">
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/jsm/utils/BufferGeometryUtils.js">
+<link rel="modulepreload" href="../assets/js/core/config.js">
+<link rel="modulepreload" href="../assets/js/core/i18n.js">
+<link rel="modulepreload" href="../assets/js/core/sitenav.js">
+<link rel="modulepreload" href="../assets/js/explorer/explorer.js">
+<link rel="modulepreload" href="../assets/js/explorer/geometry.js">
+<link rel="modulepreload" href="../assets/js/explorer/surface.js">
+<link rel="modulepreload" href="../assets/js/explorer/stage.js">
+<link rel="modulepreload" href="../assets/js/explorer/registry.js">
+<link rel="modulepreload" href="../assets/js/explorer/ui.js">
+<link rel="modulepreload" href="model/thermae.js">
+<link rel="modulepreload" href="model/parts.js">
+</head>
+<body class="explorer">
+<div id="app">
+  <canvas id="scene" tabindex="0" data-i18n-attr="aria-label:ui.canvasAria"></canvas>
+  <div id="labels" aria-hidden="true"></div>
+  <div id="tip"></div>
+  <div id="loading" data-i18n="ui.loading">Loading the model…</div>
+
+  <!-- right column: site navigation, parts list -->
+  <div class="rail rail-nav">
+    <nav id="siteNav" class="site-nav panel"></nav>
+    <aside class="parts panel sheet" id="parts" data-i18n-attr="aria-label:ui.partsAria">
+      <header><h2 data-i18n="ui.parts">Parts</h2><small id="partCount"></small>
+        <button class="sheet-close" data-sheet="parts" data-i18n-attr="aria-label:ui.close">&times;</button></header>
+      <div class="list" id="partList"></div>
+    </aside>
+  </div>
+
+  <!-- left column: title, info card -->
+  <div class="rail rail-model">
+    <div class="rail-head">
+      <a class="brand-site panel" href="../">Edu<b>graphica</b></a>
+      <div class="brand panel">
+        <h1 id="modelTitle">Thermae</h1>
+        <div class="sheet-toggles">
+          <button class="tg" data-sheet="parts" aria-expanded="false" aria-controls="parts" data-i18n="ui.parts">Parts</button>
+          <button class="tg" data-sheet="cardPanel" aria-expanded="false" aria-controls="cardPanel" data-i18n="ui.info">Info</button>
+        </div>
+      </div>
+    </div>
+    <section class="card panel sheet" id="cardPanel" data-i18n-attr="aria-label:ui.infoAria">
+      <button class="sheet-close" data-sheet="cardPanel" data-i18n-attr="aria-label:ui.close">&times;</button>
+      <div id="card" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <!-- toolbar: the model adds its own controls (roofs, section, people) in front of Explode -->
+  <nav class="toolbar panel" data-i18n-attr="aria-label:ui.viewControls">
+    <div class="seg" role="group" data-i18n-attr="aria-label:ui.scene">
+      <button id="sceneWater" aria-pressed="true" data-i18n="ui.site">Site</button>
+      <button id="sceneStudio" aria-pressed="false" data-i18n="ui.studio">Studio</button>
+    </div>
+    <button class="tg" id="explode" aria-pressed="false" data-i18n="ui.explode">Explode</button>
+    <button class="tg" id="labelsBtn" aria-pressed="false" data-i18n="ui.labels">Labels</button>
+    <button class="tg" id="spin" aria-pressed="false" data-i18n="ui.spin">Spin</button>
+    <div class="sep"></div>
+    <div class="sw" role="group" id="swatches" data-i18n-attr="aria-label:ui.colour"></div>
+    <button class="tg" id="reset" data-i18n="ui.reset" data-i18n-attr="title:ui.resetTitle">Reset</button>
+  </nav>
+
+  <footer id="siteFoot" class="site-foot"></footer>
+</div>
+
+<script type="module">
+  import { startExplorer } from '../assets/js/explorer/explorer.js';
+  import { mountSiteNav } from '../assets/js/core/sitenav.js';
+  import { createThermae } from './model/thermae.js';
+  import { PARTS, GROUPS } from './model/parts.js';
+
+  const nav = mountSiteNav({ site: 'thermae', current: 'model' });
+  startExplorer({ site: 'thermae', ns: 'thermae', createModel: createThermae, parts: PARTS, groups: GROUPS })
+    .catch(async err => {
+      console.error(err);
+      const { S } = await nav;
+      document.getElementById('loading').outerHTML = `<div id="err" class="panel">${S?.ui?.startError || 'The 3D view could not start.'}</div>`;
+    });
+</script>
+</body>
+</html>

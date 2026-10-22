@@ -50,4 +50,10 @@ export const MICROSITES = [
       { id: 'story', path: 'story/' },
     ],
   },
+  {
+    id: 'thermae', path: 'thermae/', ready: false, card: 'thermae/card.jpg',   // prototype: the model only, no card yet
+    pages: [
+      { id: 'model', path: '' },
+    ],
+  },
 ];
